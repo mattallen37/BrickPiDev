@@ -13,6 +13,8 @@
 #ifndef __BrickPi_h_
 #define __BrickPi_h_
 
+#define DEBUG
+
 #include <wiringPi.h>
 
 #define PORT_A 0
@@ -334,13 +336,17 @@ __RETRY_COMMUNICATION__:
     }
     
     if(result){
-      printf("BrickPiRx error: %d\n", result);      
+#ifdef DEBUG
+      printf("BrickPiRx error: %d\n", result);
+#endif
       if(Retried < 2){
         Retried++;
         goto __RETRY_COMMUNICATION__;
       }
       else{
+#ifdef DEBUG
         printf("Retry failed.\n");
+#endif
         return -1;
       }      
     }
