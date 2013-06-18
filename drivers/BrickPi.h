@@ -13,9 +13,7 @@
 #ifndef __BrickPi_h_
 #define __BrickPi_h_
 
-//#include "UART.h"
 #include <wiringPi.h>
-//#include <wiringSerial.h>
 
 #define PORT_A 0
 #define PORT_B 1
@@ -58,14 +56,11 @@
 #define TYPE_SENSOR_COLOR_BLUE         41
 #define TYPE_SENSOR_COLOR_NONE         42
 // Supported, but not tested extensively
-#define TYPE_SENSOR_I2C                43 // I2C. RPi tells the BrickPi what to write, and how many bytes to read
-#define TYPE_SENSOR_I2C_9V             44 // I2C with 9v pullup. RPi tells the BrickPi what to write, and how many bytes to read
-#define TYPE_SENSOR_I2C_SAME           45 // I2C. During sensor setup, RPi tells the BrickPi what to write, and how many bytes to read. During normal operation, the BrickPi does according to the setup, and returns the results.
-#define TYPE_SENSOR_I2C_9V_SAME        46 // I2C with 9v pullup. During sensor setup, RPi tells the BrickPi what to write, and how many bytes to read. During normal operation, the BrickPi does according to the setup, and returns the results.
-#define TYPE_SENSOR_I2C_MID            47 // I2C. RPi tells the BrickPi what to write, and how many bytes to read. Add the mid-clock between write and read.
-#define TYPE_SENSOR_I2C_9V_MID         48 // I2C with 9v pullup. RPi tells the BrickPi what to write, and how many bytes to read. Add the mid-clock between write and read.
-#define TYPE_SENSOR_I2C_SAME_MID       49 // I2C. During sensor setup, RPi tells the BrickPi what to write, and how many bytes to read. During normal operation, the BrickPi does according to the setup, and returns the results. Add the mid-clock between write and read.
-#define TYPE_SENSOR_I2C_9V_SAME_MID    50 // I2C with 9v pullup. During sensor setup, RPi tells the BrickPi what to write, and how many bytes to read. During normal operation, the BrickPi does according to the setup, and returns the results. Add the mid-clock between write and read.
+#define TYPE_SENSOR_I2C                43
+#define TYPE_SENSOR_I2C_9V             44
+
+#define BIT_I2C_MID  0x01  // defined for each device
+#define BIT_I2C_SAME 0x02  // defined for each device
 
 #define INDEX_RED   0
 #define INDEX_GREEN 1
@@ -94,7 +89,8 @@ struct BrickPiStruct{
 */
   long          Sensor         [4];     // Primary sensor values
   long          SensorArray    [4][4];  // For more sensor values for the sensor (e.g. for color sensor FULL mode).
-  long          SensorType     [4];     // Sensor types
+  unsigned char SensorType     [4];     // Sensor types
+  unsigned char SensorSettings [4][8];  // Sensor settings, used for specifying I2C settings.
 
 /*
   I2C
@@ -106,9 +102,6 @@ struct BrickPiStruct{
   unsigned char SensorI2CRead   [4][8];     // How many bytes to read
   unsigned char SensorI2COut    [4][8][16]; // The I2C bytes to write
   unsigned char SensorI2CIn     [4][8][16]; // The I2C input buffers
-  
-  // Only for use inside the library
-  unsigned char SensorI2CLastAddr [4][8];  // The last I2C address
 };
 
 struct BrickPiStruct BrickPi;
@@ -172,6 +165,17 @@ unsigned long GetBits(unsigned char byte_offset, unsigned char bit_offset, unsig
   return Result;
 }
 
+unsigned char BitsNeeded(unsigned long value){
+  unsigned char i = 0;
+  while(i < 32){
+    if(!value)
+      return i;
+    value /= 2;
+    i++;
+  }
+  return 31;
+}
+
 int BrickPiSetupSensors(){
   unsigned char i = 0;
   while(i < 2){
@@ -187,33 +191,24 @@ int BrickPiSetupSensors(){
     unsigned char ii = 0;
     while(ii < 2){
       unsigned char port = (i * 2) + ii;
-      if(Array[BYTE_SENSOR_1_TYPE + ii] == TYPE_SENSOR_I2C
-      || Array[BYTE_SENSOR_1_TYPE + ii] == TYPE_SENSOR_I2C_9V
-      || Array[BYTE_SENSOR_1_TYPE + ii] == TYPE_SENSOR_I2C_SAME
-      || Array[BYTE_SENSOR_1_TYPE + ii] == TYPE_SENSOR_I2C_9V_SAME
-      || Array[BYTE_SENSOR_1_TYPE + ii] == TYPE_SENSOR_I2C_MID
-      || Array[BYTE_SENSOR_1_TYPE + ii] == TYPE_SENSOR_I2C_9V_MID
-      || Array[BYTE_SENSOR_1_TYPE + ii] == TYPE_SENSOR_I2C_SAME_MID
-      || Array[BYTE_SENSOR_1_TYPE + ii] == TYPE_SENSOR_I2C_9V_SAME_MID){
+      if(Array[BYTE_SENSOR_1_TYPE + ii] == TYPE_SENSOR_I2C){
         AddBits(3, 0, 8, BrickPi.SensorI2CSpeed[port]);
         
         if(BrickPi.SensorI2CDevices[port] > 8)
           BrickPi.SensorI2CDevices[port] = 8;
-        if(BrickPi.SensorI2CDevices[port] == 0)
-          AddBits(3, 0, 3, 0);
-        else
-          AddBits(3, 0, 3, (BrickPi.SensorI2CDevices[port] - 1));
         
-        byte device = 0;
+        if(BrickPi.SensorI2CDevices[port] == 0)
+          BrickPi.SensorI2CDevices[port] = 1;
+        
+        AddBits(3, 0, 3, (BrickPi.SensorI2CDevices[port] - 1));
+        
+        unsigned char device = 0;
         while(device < BrickPi.SensorI2CDevices[port]){
           AddBits(3, 0, 7, (BrickPi.SensorI2CAddr[port][device] >> 1));
-          BrickPi.SensorI2CLastAddr[port][device] = BrickPi.SensorI2CAddr[port][device];
-          if(BrickPi.SensorType[port] == TYPE_SENSOR_I2C_SAME
-          || BrickPi.SensorType[port] == TYPE_SENSOR_I2C_9V_SAME
-          || BrickPi.SensorType[port] == TYPE_SENSOR_I2C_SAME_MID
-          || BrickPi.SensorType[port] == TYPE_SENSOR_I2C_9V_SAME_MID){          
-            AddBits(3, 0, 5, (BrickPi.SensorI2CWrite[port][device] - 1));
-            AddBits(3, 0, 5, (BrickPi.SensorI2CRead [port][device] - 1));
+          AddBits(3, 0, 2, BrickPi.SensorSettings[port][device]);
+          if(BrickPi.SensorSettings[port][device] & BIT_I2C_SAME){          
+            AddBits(3, 0, 4, (BrickPi.SensorI2CWrite[port][device] - 1));
+            AddBits(3, 0, 4, (BrickPi.SensorI2CRead [port][device] - 1));
             unsigned char out_byte = 0;
             while(out_byte < BrickPi.SensorI2CWrite[port][device]){
               AddBits(3, 0, 8, BrickPi.SensorI2COut[port][device][out_byte]);
@@ -238,6 +233,28 @@ int BrickPiSetupSensors(){
 
 unsigned char Retried = 0; // For re-trying a failed update.
 
+/*
+
+    if message type == MSG_TYPE_VALUES
+      for ports
+        if offset encoder 1 bit
+          offset length 5 bits
+          offset (offset length + 1)
+      
+      for ports
+        motor control 10 bits
+      
+      for sensor ports
+        if sensor port type == TYPE_SENSOR_I2C
+          for devices
+            if not same mode
+              out bytes 4 bits
+              in bytes 4 bits
+              for out bytes
+                out array 8 bits
+
+*/
+
 int BrickPiUpdateValues(){
   unsigned char i = 0;
   unsigned int ii = 0;
@@ -256,13 +273,39 @@ __RETRY_COMMUNICATION__:
     
     Bit_Offset = 0;
     
-    AddBits(1, 0, 2, 0);
+//    AddBits(1, 0, 2, 0);     use this to disable encoder offset
+    
+    ii = 0;                 // use this for encoder offset support
+    while(ii < 2){
+      unsigned char port = (i * 2) + ii;
+      if(EncoderOffset[port]){
+        long Temp_Value = EncoderOffset[port];
+        unsigned char Temp_ENC_DIR;
+        unsigned char Temp_BitsNeeded;
+        
+        AddBits(1, 0, 1, 1);
+        if(Temp_Value < 0){
+          Temp_ENC_DIR = 1;
+          Temp_Value *= (-1);
+        }
+        Temp_BitsNeeded = (BitsNeeded(Temp_Value) + 1);
+        AddBits(1, 0, 5, Temp_BitsNeeded);
+        Temp_Value *= 2;
+        Temp_Value |= Temp_ENC_DIR;
+        AddBits(1, 0, Temp_BitsNeeded, Temp_Value);
+      }
+      else{
+        AddBits(1, 0, 1, 0);
+      }
+      ii++;
+    }
     
     int speed;
     unsigned char dir;    
     ii = 0;
     while(ii < 2){
-      speed = BrickPi.MotorSpeed[(ii + (i * 2))];
+      unsigned char port = (i * 2) + ii;
+      speed = BrickPi.MotorSpeed[port];
       dir = 0;
       if(speed < 0){
         dir = 1;
@@ -271,34 +314,24 @@ __RETRY_COMMUNICATION__:
       if(speed > 255){
         speed = 255;
       }
-      AddBits(1, 0, 10, ((((speed & 0xFF) << 2) | (dir << 1) | (BrickPi.MotorEnable[(ii + (i * 2))] & 0x01)) & 0x3FF));
+      AddBits(1, 0, 10, ((((speed & 0xFF) << 2) | (dir << 1) | (BrickPi.MotorEnable[port] & 0x01)) & 0x3FF));
       ii++;
     }
     
     ii = 0;
     while(ii < 2){
       unsigned char port = (i * 2) + ii;
-      if(BrickPi.SensorType[port] == TYPE_SENSOR_I2C
-      || BrickPi.SensorType[port] == TYPE_SENSOR_I2C_9V
-      || BrickPi.SensorType[port] == TYPE_SENSOR_I2C_MID
-      || BrickPi.SensorType[port] == TYPE_SENSOR_I2C_9V_MID){
+      if(BrickPi.SensorType[port] == TYPE_SENSOR_I2C){
         unsigned char device = 0;
         while(device < BrickPi.SensorI2CDevices[port]){
-          if(BrickPi.SensorI2CAddr[port][device] != BrickPi.SensorI2CLastAddr[port][device]){
-            AddBits(1, 0, 1, 1);
-            AddBits(1, 0, 7, (BrickPi.SensorI2CAddr[port][device] >> 1));
-            BrickPi.SensorI2CLastAddr[port][device] = BrickPi.SensorI2CAddr[port][device];
-          }
-          else{
-            AddBits(1, 0, 1, 0);
-          }
-          
-          AddBits(1, 0, 5, BrickPi.SensorI2CWrite[port][device]);
-          AddBits(1, 0, 5, BrickPi.SensorI2CRead [port][device]);
-          unsigned char out_byte = 0;
-          while(out_byte < BrickPi.SensorI2CWrite[port][device]){
-            AddBits(1, 0, 8, BrickPi.SensorI2COut[port][device][out_byte]);
-            out_byte++;
+          if(!(BrickPi.SensorSettings[port][device] & BIT_I2C_SAME)){
+            AddBits(1, 0, 4, BrickPi.SensorI2CWrite[port][device]);
+            AddBits(1, 0, 4, BrickPi.SensorI2CRead [port][device]);
+            unsigned char out_byte = 0;
+            while(out_byte < BrickPi.SensorI2CWrite[port][device]){
+              AddBits(1, 0, 8, BrickPi.SensorI2COut[port][device][out_byte]);
+              out_byte++;
+            }
           }
           device++;
         }
