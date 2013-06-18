@@ -106,22 +106,6 @@ struct BrickPiStruct{
 
 struct BrickPiStruct BrickPi;
 
-/*
-
-  values sets motor values, and returns encoder and sensor data
-    RPi > BrickPi packed as:
-      2 bits offset encoder(s)?
-      5 bits motor A position regulation length (if in position regulation mode)
-      5 bits motor B position regulation length (if in position regulation mode)
-      5 bits encoder A offset length (if offsetting encoder A)
-      5 bits encoder B offset length (if offsetting encoder B)
-      Motor A value
-      Motor B value
-      Encoder A offset
-      Encoder B offset
-
-*/
-
 unsigned char Array[256];
 unsigned char BytesReceived;
 
@@ -344,8 +328,13 @@ __RETRY_COMMUNICATION__:
     
     int result = BrickPiRx(&BytesReceived, Array, 7500);
     
+    if(result != -2){                            // -2 is the only error that indicates that the BrickPi uC did not properly receive the message
+      EncoderOffset[((i * 2) + PORT_A)] = 0;
+      EncoderOffset[((i * 2) + PORT_B)] = 0;
+    }
+    
     if(result){
-      printf("BrickPiRx error: %d\n", result);
+      printf("BrickPiRx error: %d\n", result);      
       if(Retried < 2){
         Retried++;
         goto __RETRY_COMMUNICATION__;
