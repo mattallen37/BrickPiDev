@@ -3,7 +3,7 @@
 *  matthewrichardson37<at>gmail.com
 *  http://mattallen37.wordpress.com/
 *  Initial date: May 29, 2013
-*  Last updated: June 6, 2013
+*  Last updated: June 19, 2013
 *
 *  You may use this code as you wish, provided you give credit where it's due.
 *
@@ -31,26 +31,10 @@ uint8_t US_ReadByte(uint8_t port){
 }
 
 uint8_t US_ReadArray(uint8_t port, uint8_t * array){
-  if(I2C_Settings(port, US_ADDR, US_I2C_WAIT)){
-    return 0;
-  }
   US_Array[0] = US_DATA_REG;
-  if(I2C_Write(1, US_Array)){
-    return 0;
-  }
-  I2C_SCL_LOW_EX();
-  I2C_WAIT;
-  if(I2C_SCL_HIGH_CHECK()){
-    return 0;
-  }
-  I2C_WAIT;
-  if(I2C_Read(8, US_Array)){
-    return 0;
-  }
-  for(uint8_t i = 0; i < 8; i++){
-    array[i] = US_Array[i];
-  }
-  return 1;
+  if(I2C_Transfer(port, US_ADDR, US_I2C_WAIT, 1, 1, US_Array, 8, array));
+    return 1;
+  return 0;
 }
 
 uint8_t US_Command(uint8_t port, uint8_t command){

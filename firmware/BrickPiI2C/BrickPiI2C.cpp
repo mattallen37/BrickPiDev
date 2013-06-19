@@ -3,7 +3,7 @@
 *  matthewrichardson37<at>gmail.com
 *  http://mattallen37.wordpress.com/
 *  Initial date: May 25, 2013
-*  Last updated: June 12, 2013
+*  Last updated: June 19, 2013
 *
 *  You may use this code as you wish, provided you give credit where it's due.
 *
@@ -14,12 +14,32 @@
 
 #include "BrickPiI2C.h"
 
+// Delay for ((us * 1) + (17 / 16)) microseconds, so us + 1 1/16th uS.
+void I2C_Delay_us(uint16_t us){                                                                              // 17 total overhead for calling and returning
+  us--;
+  for(uint16_t i = 0; i < us; i++){                                                                          // 6
+    __asm__("nop\n\t""nop\n\t""nop\n\t""nop\n\t""nop\n\t""nop\n\t""nop\n\t""nop\n\t""nop\n\t""nop\n\t");     // 10
+  }
+}
+
 // Set the I2C settings
 uint8_t I2C_Settings(uint8_t port, uint8_t addr, uint8_t speed){
   if(port > PORT_2)           // if it's not PORT_1 or PORT_2
     return 1;
   I2C_DELAY = speed;
+  
   I2C_PORT  = port;
+  
+  I2C_PORT_DDRC_SCL     =  (0x04 << I2C_PORT);
+  I2C_PORT_DDRC_SCL_NOT = ~I2C_PORT_DDRC_SCL;
+  I2C_PORT_PIN_NUM_SCL  =  (2 + I2C_PORT);
+  I2C_PORT_PIN_MSK_SCL  =  (1 << I2C_PORT_PIN_NUM_SCL);
+  
+  I2C_PORT_DDRC_SDA     =  (0x01 << I2C_PORT);
+  I2C_PORT_DDRC_SDA_NOT = ~I2C_PORT_DDRC_SDA;
+  I2C_PORT_PIN_NUM_SDA  =  I2C_PORT;
+  I2C_PORT_PIN_MSK_SDA  =  (1 << I2C_PORT_PIN_NUM_SDA);
+  
   I2C_ADDR  = addr;  
   return 0;
 }
@@ -53,7 +73,8 @@ uint8_t I2C_Transfer(uint8_t port, uint8_t addr, uint8_t speed, uint8_t mid_cloc
     if(mid_clock){
       I2C_SCL_LOW;
       I2C_WAIT;
-      if(I2C_SCL_HIGH_CHECK()){
+      I2C_SCL_HIGH;
+      if(I2C_SCL_CHECK()){
         return 0;
       }
       I2C_WAIT;
@@ -137,22 +158,20 @@ uint8_t I2C_Read(uint8_t length, uint8_t * Array){
   return result;
 }
 
-// Led SCL go high. Check for clock stretching, and timeout after 2ms of stretching.
-uint8_t I2C_SCL_HIGH_CHECK(){
-  I2C_SCL_HIGH;
-  for(int i = 0; i < 1800; i++){
-    if(I2C_SCL_STATE)return 0;
-    delayMicroseconds(1);         // actually more like 1 1/8
+// Let SCL go high. Check for clock stretching, and timeout after 2ms of stretching.
+uint8_t I2C_SCL_CHECK(){
+  for(int i = 2000; i; i--){        // Should be about 2 ms
+    if(I2C_SCL_MSK_STATE)return 0;
+    __asm__("nop\n\t""nop\n\t""nop\n\t""nop\n\t""nop\n\t""nop\n\t""nop\n\t""nop\n\t""nop\n\t");
   }
   return 1;
 }
 
-// Led SDA go high. Check for clock stretching, and timeout after 2ms of stretching.
-uint8_t I2C_SDA_HIGH_CHECK(){
-  I2C_SDA_HIGH;
-  for(int i = 0; i < 1800; i++){
-    if(I2C_SDA_STATE)return 0;
-    delayMicroseconds(1);         // actually more like 1 1/8
+// Let SDA go high. Check for data stretching (the NXT Ultrasonic sensor stretches the data line at the end of the transfer), and timeout after 2ms of stretching.
+uint8_t I2C_SDA_CHECK(){
+  for(int i = 2000; i; i--){        // Should be about 2 ms
+    if(I2C_SDA_MSK_STATE)return 0;
+    __asm__("nop\n\t""nop\n\t""nop\n\t""nop\n\t""nop\n\t""nop\n\t""nop\n\t""nop\n\t""nop\n\t");
   }
   return 1;
 }
@@ -170,12 +189,15 @@ uint8_t I2C_Start(){
 // Send the bus Stop condition
 uint8_t I2C_Stop(){
   I2C_WAIT;
-  if(I2C_SCL_HIGH_CHECK()){
-    if(I2C_SDA_HIGH_CHECK()){return 6;}
+  I2C_SCL_HIGH;
+  if(I2C_SCL_CHECK()){
+    I2C_SDA_HIGH;
+    if(I2C_SDA_CHECK()){return 6;}
     return 2;
   }
   I2C_WAIT;
-  if(I2C_SDA_HIGH_CHECK()){return 4;}
+  I2C_SDA_HIGH;
+  if(I2C_SDA_CHECK()){return 4;}
   I2C_WAIT;
   return 0;
 }
@@ -183,7 +205,8 @@ uint8_t I2C_Stop(){
 // Transmit a byte
 uint8_t I2C_Byte_Out(uint8_t data){
   uint8_t result = 0;
-  for(uint8_t i = 8; i; i--){
+
+/*  for(uint8_t i = 8; i; i--){
     I2C_SCL_LOW;
     if(0x80 & data){
       I2C_SDA_HIGH;
@@ -195,11 +218,77 @@ uint8_t I2C_Byte_Out(uint8_t data){
     I2C_WAIT;
     if(I2C_SCL_HIGH_CHECK()){return 2;}
     I2C_WAIT;
-  }
+  }*/
+  
+  I2C_SCL_LOW;
+  if(0x80 & data)I2C_SDA_HIGH;
+  else           I2C_SDA_LOW;
+  I2C_WAIT;
+  I2C_SCL_HIGH;
+  if(I2C_SCL_CHECK())return 2;
+  I2C_WAIT;
+  
+  I2C_SCL_LOW;
+  if(0x40 & data)I2C_SDA_HIGH;
+  else           I2C_SDA_LOW;
+  I2C_WAIT;
+  I2C_SCL_HIGH;
+  if(I2C_SCL_CHECK())return 2;
+  I2C_WAIT;
+  
+  I2C_SCL_LOW;
+  if(0x20 & data)I2C_SDA_HIGH;
+  else           I2C_SDA_LOW;
+  I2C_WAIT;
+  I2C_SCL_HIGH;
+  if(I2C_SCL_CHECK())return 2;
+  I2C_WAIT;
+  
+  I2C_SCL_LOW;
+  if(0x10 & data)I2C_SDA_HIGH;
+  else           I2C_SDA_LOW;
+  I2C_WAIT;
+  I2C_SCL_HIGH;
+  if(I2C_SCL_CHECK())return 2;
+  I2C_WAIT;
+  
+  I2C_SCL_LOW;
+  if(0x08 & data)I2C_SDA_HIGH;
+  else           I2C_SDA_LOW;
+  I2C_WAIT;
+  I2C_SCL_HIGH;
+  if(I2C_SCL_CHECK())return 2;
+  I2C_WAIT;
+  
+  I2C_SCL_LOW;
+  if(0x04 & data)I2C_SDA_HIGH;
+  else           I2C_SDA_LOW;
+  I2C_WAIT;
+  I2C_SCL_HIGH;
+  if(I2C_SCL_CHECK())return 2;
+  I2C_WAIT;
+  
+  I2C_SCL_LOW;
+  if(0x02 & data)I2C_SDA_HIGH;
+  else           I2C_SDA_LOW;
+  I2C_WAIT;
+  I2C_SCL_HIGH;
+  if(I2C_SCL_CHECK())return 2;
+  I2C_WAIT;
+  
+  I2C_SCL_LOW;
+  if(0x01 & data)I2C_SDA_HIGH;
+  else           I2C_SDA_LOW;
+  I2C_WAIT;
+  I2C_SCL_HIGH;
+  if(I2C_SCL_CHECK())return 2;
+  I2C_WAIT;  
+  
   I2C_SCL_LOW;
   I2C_SDA_HIGH;
   I2C_WAIT;
-  if(I2C_SCL_HIGH_CHECK()){return 2;}
+  I2C_SCL_HIGH;
+  if(I2C_SCL_CHECK()){return 2;}
   if(I2C_SDA_STATE){result=1;}
   I2C_WAIT;
   I2C_SCL_LOW;
@@ -210,21 +299,90 @@ uint8_t I2C_Byte_Out(uint8_t data){
 
 // Receive a byte
 uint8_t I2C_Byte_In(uint8_t & data, uint8_t ack){
-  data = 0;
   I2C_SCL_LOW;
   I2C_SDA_HIGH;
-  for(uint8_t i = 8; i; i--){
+  
+/*  for(uint8_t i = 8; i; i--){
     I2C_SCL_LOW;
     data <<= 1;
     I2C_WAIT;    
     if(I2C_SCL_HIGH_CHECK()){return 2;}    
     data |= I2C_SDA_STATE;
     I2C_WAIT;
-  }
+  }*/
+
+  I2C_SCL_LOW;
+  I2C_WAIT;
+  I2C_SCL_HIGH;    
+  if(I2C_SCL_CHECK()){return 2;}    
+  I2C_TEMP_BIT_7 = I2C_SDA_STATE;
+  I2C_WAIT;  
+
+  I2C_SCL_LOW;
+  I2C_WAIT;    
+  I2C_SCL_HIGH;
+  if(I2C_SCL_CHECK()){return 2;}    
+  I2C_TEMP_BIT_6 = I2C_SDA_STATE;
+  I2C_WAIT;
+
+  I2C_SCL_LOW;
+  I2C_WAIT;
+  I2C_SCL_HIGH;
+  if(I2C_SCL_CHECK()){return 2;}    
+  I2C_TEMP_BIT_5 = I2C_SDA_STATE;
+  I2C_WAIT;
+
+  I2C_SCL_LOW;
+  I2C_WAIT;
+  I2C_SCL_HIGH;   
+  if(I2C_SCL_CHECK()){return 2;}    
+  I2C_TEMP_BIT_4 = I2C_SDA_STATE;
+  I2C_WAIT;
+
+  I2C_SCL_LOW;
+  I2C_WAIT;
+  I2C_SCL_HIGH;   
+  if(I2C_SCL_CHECK()){return 2;}    
+  I2C_TEMP_BIT_3 = I2C_SDA_STATE;
+  I2C_WAIT;
+
+  I2C_SCL_LOW;
+  I2C_WAIT;
+  I2C_SCL_HIGH;  
+  if(I2C_SCL_CHECK()){return 2;}    
+  I2C_TEMP_BIT_2 = I2C_SDA_STATE;
+  I2C_WAIT;
+
+  I2C_SCL_LOW;
+  I2C_WAIT;
+  I2C_SCL_HIGH; 
+  if(I2C_SCL_CHECK()){return 2;}    
+  I2C_TEMP_BIT_1 = I2C_SDA_STATE;
+  I2C_WAIT;
+
+  I2C_SCL_LOW;
+  I2C_WAIT;
+  I2C_SCL_HIGH; 
+  if(I2C_SCL_CHECK()){return 2;}    
+  I2C_TEMP_BIT_0 = I2C_SDA_STATE;
+  I2C_WAIT;
+  
   I2C_SCL_LOW;  
   if(ack)I2C_SDA_LOW;  
-  I2C_WAIT;  
-  if(I2C_SCL_HIGH_CHECK()){return 2;}
+  I2C_WAIT;
+  I2C_SCL_HIGH;
+  
+  // Add up all the bits while waiting for SCL to go high
+  data = I2C_TEMP_BIT_0;
+  data |= (I2C_TEMP_BIT_1 << 1);
+  data |= (I2C_TEMP_BIT_2 << 2);
+  data |= (I2C_TEMP_BIT_3 << 3);
+  data |= (I2C_TEMP_BIT_4 << 4);
+  data |= (I2C_TEMP_BIT_5 << 5);
+  data |= (I2C_TEMP_BIT_6 << 6);
+  data |= (I2C_TEMP_BIT_7 << 7);
+  
+  if(I2C_SCL_CHECK()){return 2;}  
   I2C_WAIT;
   I2C_SCL_LOW;
   I2C_SDA_LOW;

@@ -3,7 +3,7 @@
  *  matthewrichardson37<at>gmail.com
  *  http://mattallen37.wordpress.com/
  *  Initial date: June 1, 2013
- *  Last updated: June 18, 2013
+ *  Last updated: June 19, 2013
  *
  *  You may use this code as you wish, provided you give credit where it's due.
  *
@@ -147,7 +147,6 @@
 #define COMM_TIMEOUT 250 // How many ms since the last communication, before timing out (and floating the motors).
 
 void setup(){
-  delay(1500);
   UART_Setup(500000);
   M_Setup();
   A_Setup();

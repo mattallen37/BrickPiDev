@@ -47,6 +47,14 @@ int V1, V2, V3;
 #define NXTChuckPort  PORT_3
 #define NXTChuckSpeed 0//20*/
 
+#define US_PORT         PORT_3
+
+#define US_I2C_TYPE     TYPE_SENSOR_I2C_9V
+#define US_I2C_PORT     PORT_2
+#define US_I2C_SPEED    7
+#define US_I2C_DEVICE   0
+#define US_I2C_SETTINGS (BIT_I2C_SAME | BIT_I2C_MID)
+
 #define I2C_PORT  PORT_1
 #define I2C_SPEED 0
 
@@ -118,7 +126,16 @@ int main() {
   BrickPi.SensorI2CRead  [I2C_PORT][I2C_DEVICE_PSP_NX]    = 6;
   BrickPi.SensorI2COut   [I2C_PORT][I2C_DEVICE_PSP_NX][0] = 0x42;
   
-//  BrickPi.SensorType[PORT_2] = TYPE_SENSOR_ULTRASONIC_CONT;
+  BrickPi.SensorType       [US_I2C_PORT]               = US_I2C_TYPE;
+  BrickPi.SensorI2CSpeed   [US_I2C_PORT]               = US_I2C_SPEED;
+  BrickPi.SensorI2CDevices [US_I2C_PORT]               = 1;
+  BrickPi.SensorSettings   [US_I2C_PORT][US_I2C_DEVICE]    = US_I2C_SETTINGS;  
+  BrickPi.SensorI2CAddr    [US_I2C_PORT][US_I2C_DEVICE]    = 0x02;
+  BrickPi.SensorI2CWrite   [US_I2C_PORT][US_I2C_DEVICE]    = 1;
+  BrickPi.SensorI2CRead    [US_I2C_PORT][US_I2C_DEVICE]    = 1;
+  BrickPi.SensorI2COut     [US_I2C_PORT][US_I2C_DEVICE][0] = 0x42;
+  
+  BrickPi.SensorType[US_PORT] = TYPE_SENSOR_ULTRASONIC_CONT;
   
 /*  BrickPi.SensorType[PORT_2] = TYPE_SENSOR_RAW;//TYPE_SENSOR_LIGHT_ON; 
   BrickPi.SensorType[PORT_3] = TYPE_SENSOR_RAW;//TYPE_SENSOR_COLOR_FULL;
@@ -151,11 +168,16 @@ int main() {
             SpeedRight = 255;
           printf("SX: %3.1d  SY: %3.1d  AX: %4.1d  AY: %4.1d  AZ: %4.1d  B: %.1d  L: %3.1d  R: %3.1d\n", SX, SY, AX, AY, AZ, B, SpeedLeft, SpeedRight);*/
         
-        printf("Results: %3.1d %.1d\n", BrickPi.Sensor[PORT_2], BrickPi.Sensor[I2C_PORT]);
+        printf("Results: %3.1d %.1d %.1d\n", BrickPi.Sensor[US_PORT], BrickPi.Sensor[US_I2C_PORT], BrickPi.Sensor[I2C_PORT]);
+        
+        if(BrickPi.Sensor[US_I2C_PORT] & (0x01 << US_I2C_DEVICE)){
+          printf("%3.1d\n", BrickPi.SensorI2CIn[US_I2C_PORT][US_I2C_DEVICE][0]);
+        }
         
         if(BrickPi.Sensor[I2C_PORT] & (0x01 << I2C_DEVICE_PSP_NX)){
           printf("%3.1d %3.1d %3.1d %3.1d %3.1d %3.1d\n", BrickPi.SensorI2CIn[I2C_PORT][I2C_DEVICE_PSP_NX][0], BrickPi.SensorI2CIn[I2C_PORT][I2C_DEVICE_PSP_NX][1], BrickPi.SensorI2CIn[I2C_PORT][I2C_DEVICE_PSP_NX][2], BrickPi.SensorI2CIn[I2C_PORT][I2C_DEVICE_PSP_NX][3], BrickPi.SensorI2CIn[I2C_PORT][I2C_DEVICE_PSP_NX][4], BrickPi.SensorI2CIn[I2C_PORT][I2C_DEVICE_PSP_NX][5]);
         }
+        
         if(BrickPi.Sensor[I2C_PORT] & (0x01 << I2C_DEVICE_NXTCHUCK)){
           SX = BrickPi.SensorI2CIn[I2C_PORT][I2C_DEVICE_NXTCHUCK][0];
           SY = BrickPi.SensorI2CIn[I2C_PORT][I2C_DEVICE_NXTCHUCK][1];
