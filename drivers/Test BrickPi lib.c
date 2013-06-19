@@ -3,7 +3,7 @@
 *  matthewrichardson37<at>gmail.com
 *  http://mattallen37.wordpress.com/
 *  Initial date: June 4, 2013
-*  Last updated: June 15, 2013
+*  Last updated: June 18, 2013
 *
 *  You may use this code as you wish, provided you give credit where it's due.
 *
@@ -69,40 +69,41 @@ int main() {
   BrickPi.SensorType[PORT_4] = TYPE_SENSOR_RAW;//TYPE_SENSOR_ULTRASONIC_CONT;
 
   BrickPi.SensorType     [NXTChuckPort]    = TYPE_SENSOR_I2C;
+  BrickPi.SensorSettings [NXTChuckPort][0] = 0;
   BrickPi.SensorI2CSpeed [NXTChuckPort]    = NXTChuckSpeed;
-  BrickPi.SensorI2CAddr  [NXTChuckPort]    = 0xA4;
+  BrickPi.SensorI2CAddr  [NXTChuckPort][0] = 0xA4;
   if(BrickPiSetupSensors())
     return 0;
   
-  BrickPi.SensorI2CWrite [NXTChuckPort]    = 2;
-  BrickPi.SensorI2CRead  [NXTChuckPort]    = 0;
-  BrickPi.SensorI2COut   [NXTChuckPort][0] = 0xF0;
-  BrickPi.SensorI2COut   [NXTChuckPort][1] = 0x55;  
+  BrickPi.SensorI2CWrite [NXTChuckPort][0]    = 2;
+  BrickPi.SensorI2CRead  [NXTChuckPort][0]    = 0;
+  
+  BrickPi.SensorI2COut   [NXTChuckPort][0][0] = 0xF0;
+  BrickPi.SensorI2COut   [NXTChuckPort][0][1] = 0x55;  
   if(BrickPiUpdateValues())
     return 0;
-
   if(!BrickPi.Sensor[NXTChuckPort])
     return 0;
 
-  BrickPi.SensorI2COut   [NXTChuckPort][0] = 0xFB;
-  BrickPi.SensorI2COut   [NXTChuckPort][1] = 0x00;  
+  BrickPi.SensorI2COut   [NXTChuckPort][0][0] = 0xFB;
+  BrickPi.SensorI2COut   [NXTChuckPort][0][1] = 0x00;  
   if(BrickPiUpdateValues())
     return 0;
-
   if(!BrickPi.Sensor[NXTChuckPort])
     return 0;  
   
-  BrickPi.SensorType     [NXTChuckPort]    = TYPE_SENSOR_I2C_SAME;
-  BrickPi.SensorI2CWrite [NXTChuckPort]    = 1;
-  BrickPi.SensorI2CRead  [NXTChuckPort]    = 6;
-  BrickPi.SensorI2COut   [NXTChuckPort][0] = 0x00;  
+  BrickPi.SensorSettings [NXTChuckPort][0]    = BIT_I2C_SAME;
+  BrickPi.SensorI2CWrite [NXTChuckPort][0]    = 1;
+  BrickPi.SensorI2CRead  [NXTChuckPort][0]    = 6;
+  BrickPi.SensorI2COut   [NXTChuckPort][0][0] = 0x00;  
 
-  BrickPi.SensorType     [PSP_NXPort]    = TYPE_SENSOR_I2C_9V_SAME;
-  BrickPi.SensorI2CSpeed [PSP_NXPort]    = PSP_NXSpeed;
-  BrickPi.SensorI2CAddr  [PSP_NXPort]    = 0x02;
-  BrickPi.SensorI2CWrite [PSP_NXPort]    = 1;
-  BrickPi.SensorI2CRead  [PSP_NXPort]    = 6;
-  BrickPi.SensorI2COut   [PSP_NXPort][0] = 0x42;
+  BrickPi.SensorType     [PSP_NXPort]       = TYPE_SENSOR_I2C_9V;
+  BrickPi.SensorSettings [PSP_NXPort][0]    = BIT_I2C_SAME;
+  BrickPi.SensorI2CSpeed [PSP_NXPort]       = PSP_NXSpeed;
+  BrickPi.SensorI2CAddr  [PSP_NXPort][0]    = 0x02;
+  BrickPi.SensorI2CWrite [PSP_NXPort][0]    = 1;
+  BrickPi.SensorI2CRead  [PSP_NXPort][0]    = 6;
+  BrickPi.SensorI2COut   [PSP_NXPort][0][0] = 0x42;
   
   BrickPi.SensorType[PORT_2] = TYPE_SENSOR_ULTRASONIC_CONT;
   
@@ -140,15 +141,15 @@ int main() {
         printf("Results: %3.1d %.1d %.1d\n", BrickPi.Sensor[PORT_2], BrickPi.Sensor[NXTChuckPort], BrickPi.Sensor[PSP_NXPort]);
         
         if(BrickPi.Sensor[PSP_NXPort]){
-          printf("%3.1d %3.1d %3.1d %3.1d %3.1d %3.1d\n", BrickPi.SensorI2CIn[PSP_NXPort][0], BrickPi.SensorI2CIn[PSP_NXPort][1], BrickPi.SensorI2CIn[PSP_NXPort][2], BrickPi.SensorI2CIn[PSP_NXPort][3], BrickPi.SensorI2CIn[PSP_NXPort][4], BrickPi.SensorI2CIn[PSP_NXPort][5]);
+          printf("%3.1d %3.1d %3.1d %3.1d %3.1d %3.1d\n", BrickPi.SensorI2CIn[PSP_NXPort][0][0], BrickPi.SensorI2CIn[PSP_NXPort][0][1], BrickPi.SensorI2CIn[PSP_NXPort][0][2], BrickPi.SensorI2CIn[PSP_NXPort][0][3], BrickPi.SensorI2CIn[PSP_NXPort][0][4], BrickPi.SensorI2CIn[PSP_NXPort][0][5]);
         }
         if(BrickPi.Sensor[NXTChuckPort]){
-          SX = BrickPi.SensorI2CIn[NXTChuckPort][0];
-          SY = BrickPi.SensorI2CIn[NXTChuckPort][1];
-          AX = (BrickPi.SensorI2CIn[NXTChuckPort][2] << 2);
-          AY = (BrickPi.SensorI2CIn[NXTChuckPort][3] << 2);
-          AZ = (BrickPi.SensorI2CIn[NXTChuckPort][4] << 2);
-          B  = ((~BrickPi.SensorI2CIn[NXTChuckPort][5]) & 0x03);
+          SX = BrickPi.SensorI2CIn[NXTChuckPort][0][0];
+          SY = BrickPi.SensorI2CIn[NXTChuckPort][0][1];
+          AX = (BrickPi.SensorI2CIn[NXTChuckPort][0][2] << 2);
+          AY = (BrickPi.SensorI2CIn[NXTChuckPort][0][3] << 2);
+          AZ = (BrickPi.SensorI2CIn[NXTChuckPort][0][4] << 2);
+          B  = ((~BrickPi.SensorI2CIn[NXTChuckPort][0][5]) & 0x03);
           
           VZ = 0;
           if(B & 0x01 && AX < 462)
