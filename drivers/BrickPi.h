@@ -27,6 +27,12 @@
 #define PORT_3 2
 #define PORT_4 3
 
+#define MASK_D0_M 0x01
+#define MASK_D1_M 0x02
+#define MASK_9V   0x04
+#define MASK_D0_S 0x08
+#define MASK_D1_S 0x10
+
 #define BYTE_MSG_TYPE 0          // MSG_TYPE is the first byte.
   #define MSG_TYPE_CHANGE_ADDR 1 // Change the UART address.
   #define MSG_TYPE_SENSOR_TYPE 2 // Change/set the sensor type.
@@ -44,22 +50,20 @@
 #define TYPE_MOTOR_SPEED               1
 #define TYPE_MOTOR_POSITION            2
 
-#define TYPE_SENSOR_RAW                0 // - 31
+//#define TYPE_SENSOR_RAW                0 // - 31
+#define TYPE_SENSOR_LIGHT_OFF          0
+#define TYPE_SENSOR_LIGHT_ON           (MASK_D0_M | MASK_D0_S)
 #define TYPE_SENSOR_TOUCH              32
-#define TYPE_SENSOR_LIGHT_OFF          33
-//#define TYPE_SENSOR_LIGHT_FLASH        10
-#define TYPE_SENSOR_LIGHT_ON           34
-#define TYPE_SENSOR_ULTRASONIC_CONT    35
-#define TYPE_SENSOR_ULTRASONIC_SS      36
-#define TYPE_SENSOR_RCX_LIGHT          37 // tested minimally
-#define TYPE_SENSOR_COLOR_FULL         38
-#define TYPE_SENSOR_COLOR_RED          39
-#define TYPE_SENSOR_COLOR_GREEN        40
-#define TYPE_SENSOR_COLOR_BLUE         41
-#define TYPE_SENSOR_COLOR_NONE         42
-// Supported, but not tested extensively
-#define TYPE_SENSOR_I2C                43
-#define TYPE_SENSOR_I2C_9V             44
+#define TYPE_SENSOR_ULTRASONIC_CONT    33
+#define TYPE_SENSOR_ULTRASONIC_SS      34
+#define TYPE_SENSOR_RCX_LIGHT          35 // tested minimally
+#define TYPE_SENSOR_COLOR_FULL         36
+#define TYPE_SENSOR_COLOR_RED          37
+#define TYPE_SENSOR_COLOR_GREEN        38
+#define TYPE_SENSOR_COLOR_BLUE         39
+#define TYPE_SENSOR_COLOR_NONE         40
+#define TYPE_SENSOR_I2C                41
+#define TYPE_SENSOR_I2C_9V             42
 
 #define BIT_I2C_MID  0x01  // defined for each device
 #define BIT_I2C_SAME 0x02  // defined for each device
