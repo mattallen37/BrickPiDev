@@ -198,8 +198,8 @@ int BrickPiSetupSensors(){
           AddBits(3, 0, 7, (BrickPi.SensorI2CAddr[port][device] >> 1));
           AddBits(3, 0, 2, BrickPi.SensorSettings[port][device]);
           if(BrickPi.SensorSettings[port][device] & BIT_I2C_SAME){          
-            AddBits(3, 0, 4, (BrickPi.SensorI2CWrite[port][device] - 1));
-            AddBits(3, 0, 4, (BrickPi.SensorI2CRead [port][device] - 1));
+            AddBits(3, 0, 4, BrickPi.SensorI2CWrite[port][device]);
+            AddBits(3, 0, 4, BrickPi.SensorI2CRead [port][device]);
             unsigned char out_byte = 0;
             while(out_byte < BrickPi.SensorI2CWrite[port][device]){
               AddBits(3, 0, 8, BrickPi.SensorI2COut[port][device][out_byte]);
