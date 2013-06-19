@@ -177,7 +177,8 @@ int BrickPiSetupSensors(){
     unsigned char ii = 0;
     while(ii < 2){
       unsigned char port = (i * 2) + ii;
-      if(Array[BYTE_SENSOR_1_TYPE + ii] == TYPE_SENSOR_I2C){
+      if(Array[BYTE_SENSOR_1_TYPE + ii] == TYPE_SENSOR_I2C
+      || Array[BYTE_SENSOR_1_TYPE + ii] == TYPE_SENSOR_I2C_9V){
         AddBits(3, 0, 8, BrickPi.SensorI2CSpeed[port]);
         
         if(BrickPi.SensorI2CDevices[port] > 8)
@@ -218,28 +219,6 @@ int BrickPiSetupSensors(){
 }
 
 unsigned char Retried = 0; // For re-trying a failed update.
-
-/*
-
-    if message type == MSG_TYPE_VALUES
-      for ports
-        if offset encoder 1 bit
-          offset length 5 bits
-          offset (offset length + 1)
-      
-      for ports
-        motor control 10 bits
-      
-      for sensor ports
-        if sensor port type == TYPE_SENSOR_I2C
-          for devices
-            if not same mode
-              out bytes 4 bits
-              in bytes 4 bits
-              for out bytes
-                out array 8 bits
-
-*/
 
 int BrickPiUpdateValues(){
   unsigned char i = 0;
@@ -307,7 +286,8 @@ __RETRY_COMMUNICATION__:
     ii = 0;
     while(ii < 2){
       unsigned char port = (i * 2) + ii;
-      if(BrickPi.SensorType[port] == TYPE_SENSOR_I2C){
+      if(BrickPi.SensorType[port] == TYPE_SENSOR_I2C
+      || BrickPi.SensorType[port] == TYPE_SENSOR_I2C_9V){
         unsigned char device = 0;
         while(device < BrickPi.SensorI2CDevices[port]){
           if(!(BrickPi.SensorSettings[port][device] & BIT_I2C_SAME)){
@@ -335,7 +315,7 @@ __RETRY_COMMUNICATION__:
       EncoderOffset[((i * 2) + PORT_B)] = 0;
     }
     
-    if(result){
+    if(result || (Array[BYTE_MSG_TYPE] != MSG_TYPE_VALUES)){
 #ifdef DEBUG
       printf("BrickPiRx error: %d\n", result);
 #endif
@@ -353,75 +333,67 @@ __RETRY_COMMUNICATION__:
     
     Bit_Offset = 0;
     
-    if(Array[BYTE_MSG_TYPE] == MSG_TYPE_VALUES){
-      unsigned char Temp_BitsUsed[2] = {0, 0};         // Used for encoder values
-      Temp_BitsUsed[0] = GetBits(1, 0, 5);
-      Temp_BitsUsed[1] = GetBits(1, 0, 5);
-      unsigned long Temp_EncoderVal;
-      
-      ii = 0;
-      while(ii < 2){
-        Temp_EncoderVal = GetBits(1, 0, Temp_BitsUsed[ii]);
-        if(Temp_EncoderVal & 0x01){
-          Temp_EncoderVal /= 2;
-          BrickPi.Encoder[ii + (i * 2)] = Temp_EncoderVal * (-1);}
-        else{
-          BrickPi.Encoder[ii + (i * 2)] = (Temp_EncoderVal / 2);}      
-        ii++;
-      }
+    unsigned char Temp_BitsUsed[2] = {0, 0};         // Used for encoder values
+    Temp_BitsUsed[0] = GetBits(1, 0, 5);
+    Temp_BitsUsed[1] = GetBits(1, 0, 5);
+    unsigned long Temp_EncoderVal;
+    
+    ii = 0;
+    while(ii < 2){
+      Temp_EncoderVal = GetBits(1, 0, Temp_BitsUsed[ii]);
+      if(Temp_EncoderVal & 0x01){
+        Temp_EncoderVal /= 2;
+        BrickPi.Encoder[ii + (i * 2)] = Temp_EncoderVal * (-1);}
+      else{
+        BrickPi.Encoder[ii + (i * 2)] = (Temp_EncoderVal / 2);}      
+      ii++;
+    }
 
-      ii = 0;
-      while(ii < 2){
-        unsigned char port = ii + (i * 2);
-        switch(BrickPi.SensorType[port]){
-          case TYPE_SENSOR_TOUCH:
-            BrickPi.Sensor[port] = GetBits(1, 0, 1);
-          break;
-          case TYPE_SENSOR_ULTRASONIC_CONT:
-          case TYPE_SENSOR_ULTRASONIC_SS:
-            BrickPi.Sensor[port] = GetBits(1, 0, 8);
-          break;
-          case TYPE_SENSOR_COLOR_FULL:
-            BrickPi.Sensor[port] = GetBits(1, 0, 3);
-            BrickPi.SensorArray[port][INDEX_BLANK] = GetBits(1, 0, 10);
-            BrickPi.SensorArray[port][INDEX_RED  ] = GetBits(1, 0, 10);                
-            BrickPi.SensorArray[port][INDEX_GREEN] = GetBits(1, 0, 10);
-            BrickPi.SensorArray[port][INDEX_BLUE ] = GetBits(1, 0, 10);
-          break;          
-          case TYPE_SENSOR_I2C:
-          case TYPE_SENSOR_I2C_9V:
-          case TYPE_SENSOR_I2C_SAME:
-          case TYPE_SENSOR_I2C_9V_SAME:
-          case TYPE_SENSOR_I2C_MID:
-          case TYPE_SENSOR_I2C_9V_MID:
-          case TYPE_SENSOR_I2C_SAME_MID:
-          case TYPE_SENSOR_I2C_9V_SAME_MID:          
-            BrickPi.Sensor[port] = GetBits(1, 0, BrickPi.SensorI2CDevices[port]);
-            unsigned char device = 0;
-            while(device < BrickPi.SensorI2CDevices[port]){
-              if(BrickPi.Sensor[port] & (0x01 << device)){
-                unsigned char in_byte = 0;
-                while(in_byte < BrickPi.SensorI2CRead[port][device]){
-                  BrickPi.SensorI2CIn[port][device][in_byte] = GetBits(1, 0, 8);
-                  in_byte++;
-                }
+    ii = 0;
+    while(ii < 2){
+      unsigned char port = ii + (i * 2);
+      switch(BrickPi.SensorType[port]){
+        case TYPE_SENSOR_TOUCH:
+          BrickPi.Sensor[port] = GetBits(1, 0, 1);
+        break;
+        case TYPE_SENSOR_ULTRASONIC_CONT:
+        case TYPE_SENSOR_ULTRASONIC_SS:
+          BrickPi.Sensor[port] = GetBits(1, 0, 8);
+        break;
+        case TYPE_SENSOR_COLOR_FULL:
+          BrickPi.Sensor[port] = GetBits(1, 0, 3);
+          BrickPi.SensorArray[port][INDEX_BLANK] = GetBits(1, 0, 10);
+          BrickPi.SensorArray[port][INDEX_RED  ] = GetBits(1, 0, 10);                
+          BrickPi.SensorArray[port][INDEX_GREEN] = GetBits(1, 0, 10);
+          BrickPi.SensorArray[port][INDEX_BLUE ] = GetBits(1, 0, 10);
+        break;          
+        case TYPE_SENSOR_I2C:
+        case TYPE_SENSOR_I2C_9V:
+          BrickPi.Sensor[port] = GetBits(1, 0, BrickPi.SensorI2CDevices[port]);
+          unsigned char device = 0;
+          while(device < BrickPi.SensorI2CDevices[port]){
+            if(BrickPi.Sensor[port] & (0x01 << device)){
+              unsigned char in_byte = 0;
+              while(in_byte < BrickPi.SensorI2CRead[port][device]){
+                BrickPi.SensorI2CIn[port][device][in_byte] = GetBits(1, 0, 8);
+                in_byte++;
               }
-              device++;
             }
-          break;      
-          case TYPE_SENSOR_LIGHT_OFF:
-          case TYPE_SENSOR_LIGHT_ON:
-          case TYPE_SENSOR_RCX_LIGHT:
-          case TYPE_SENSOR_COLOR_RED:
-          case TYPE_SENSOR_COLOR_GREEN:
-          case TYPE_SENSOR_COLOR_BLUE:
-          case TYPE_SENSOR_COLOR_NONE:
-          default:
-            BrickPi.Sensor[(ii + (i * 2))] = GetBits(1, 0, 10);
-        }        
-        ii++;
-      }      
-    }    
+            device++;
+          }
+        break;      
+        case TYPE_SENSOR_LIGHT_OFF:
+        case TYPE_SENSOR_LIGHT_ON:
+        case TYPE_SENSOR_RCX_LIGHT:
+        case TYPE_SENSOR_COLOR_RED:
+        case TYPE_SENSOR_COLOR_GREEN:
+        case TYPE_SENSOR_COLOR_BLUE:
+        case TYPE_SENSOR_COLOR_NONE:
+        default:
+          BrickPi.Sensor[(ii + (i * 2))] = GetBits(1, 0, 10);
+      }        
+      ii++;
+    }      
     i++;
   }
   return 0;
