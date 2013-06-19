@@ -126,25 +126,20 @@
     #define BYTE_SENSOR_1_TYPE   1
     #define BYTE_SENSOR_2_TYPE   2
 
-#define TYPE_MOTOR_PWM                 0
-#define TYPE_MOTOR_SPEED               1
-#define TYPE_MOTOR_POSITION            2
-
 //#define TYPE_SENSOR_RAW                0 // - 31
+#define TYPE_SENSOR_LIGHT_OFF          0
+#define TYPE_SENSOR_LIGHT_ON           (MASK_D0_M | MASK_D0_S)
 #define TYPE_SENSOR_TOUCH              32
-#define TYPE_SENSOR_LIGHT_OFF          33
-//#define TYPE_SENSOR_LIGHT_FLASH        10
-#define TYPE_SENSOR_LIGHT_ON           34
-#define TYPE_SENSOR_ULTRASONIC_CONT    35
-#define TYPE_SENSOR_ULTRASONIC_SS      36
-#define TYPE_SENSOR_RCX_LIGHT          37 // tested minimally
-#define TYPE_SENSOR_COLOR_FULL         38
-#define TYPE_SENSOR_COLOR_RED          39
-#define TYPE_SENSOR_COLOR_GREEN        40
-#define TYPE_SENSOR_COLOR_BLUE         41
-#define TYPE_SENSOR_COLOR_NONE         42
-#define TYPE_SENSOR_I2C                43
-#define TYPE_SENSOR_I2C_9V             44
+#define TYPE_SENSOR_ULTRASONIC_CONT    33
+#define TYPE_SENSOR_ULTRASONIC_SS      34
+#define TYPE_SENSOR_RCX_LIGHT          35 // tested minimally
+#define TYPE_SENSOR_COLOR_FULL         36
+#define TYPE_SENSOR_COLOR_RED          37
+#define TYPE_SENSOR_COLOR_GREEN        38
+#define TYPE_SENSOR_COLOR_BLUE         39
+#define TYPE_SENSOR_COLOR_NONE         40
+#define TYPE_SENSOR_I2C                41
+#define TYPE_SENSOR_I2C_9V             42
 
 #define BIT_I2C_MID  0x01  // defined for each device
 #define BIT_I2C_SAME 0x02  // defined for each device
@@ -156,7 +151,6 @@ void setup(){
   UART_Setup(500000);
   M_Setup();
   A_Setup();
-  SetupSensors();
 }
 
 int8_t Result;
@@ -366,8 +360,6 @@ void EncodeValues(){
           }
         }        
       break;
-      case TYPE_SENSOR_LIGHT_OFF:
-      case TYPE_SENSOR_LIGHT_ON:
       case TYPE_SENSOR_RCX_LIGHT:
       case TYPE_SENSOR_COLOR_RED:
       case TYPE_SENSOR_COLOR_GREEN:
@@ -425,12 +417,6 @@ void SetupSensors(){
   for(byte port = 0; port < 2; port++){  
     switch(SensorType[port]){
       case TYPE_SENSOR_TOUCH:
-      case TYPE_SENSOR_LIGHT_OFF:
-        A_Config(port, 0);
-      break;
-      case TYPE_SENSOR_LIGHT_ON:
-        A_Config(port, (MASK_D0_M | MASK_D0_S));
-      break;    
       case TYPE_SENSOR_ULTRASONIC_CONT:
         US_Setup(port);
       break;
@@ -501,8 +487,6 @@ void UpdateSensors(){
           SEN[port] = ((I2C_Transfer(port, I2C_Addr[port][device], I2C_Speed[port], (SensorSettings[port][device] & BIT_I2C_MID), I2C_Out_Bytes[port][device], I2C_Out_Array[port][device], I2C_In_Bytes[port][device], I2C_In_Array[port][device]) & 0x01) << device); // The success/failure result of the I2C transaction(s) is stored as 1 bit in SEN.
         }
       break;
-      case TYPE_SENSOR_LIGHT_OFF:
-      case TYPE_SENSOR_LIGHT_ON:
       default:
         SEN[port] = A_ReadRaw(port);
     }

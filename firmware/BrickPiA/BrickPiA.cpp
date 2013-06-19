@@ -3,7 +3,7 @@
 *  matthewrichardson37<at>gmail.com
 *  http://mattallen37.wordpress.com/
 *  Initial date: June 1, 2013
-*  Last updated: June 7, 2013
+*  Last updated: June 18, 2013
 *
 *  You may use this code as you wish, provided you give credit where it's due.
 *
@@ -19,10 +19,13 @@ uint8_t A_Setup(){
   ADCSRA &= ~(1 << ADPS1);   //               ''
   ADCSRA &= ~(1 << ADPS2);   //               ''
 
-  ADCSRA |=  (1 << ADPS2);   // set ADC clock prescale factor to 16
-  ADCSRA |=  (1 << ADPS0);   // and this bit for 32 prescale
+  ADCSRA |=  (1 << ADPS2);   // set this bit for ADC clock prescale factor of 16
+  ADCSRA |=  (1 << ADPS0);   // and this bit for prescale factor of 32
 	
 	ADCSRA |=  (1 << ADEN );   // enable ADC
+  
+  A_Config(PORT_1, 0);
+  A_Config(PORT_2, 0);
 }
 
 uint16_t A_ReadRaw(uint8_t port){
@@ -35,14 +38,7 @@ uint16_t A_ReadRawCh(uint8_t channel){
 
 	uint8_t low, high;
 
-// this is probably only for a Mega
-#if defined(ADCSRB) && defined(MUX5)
-	// the MUX5 bit of ADCSRB selects whether we're reading from channels
-	// 0 to 7 (MUX5 low) or 8 to 15 (MUX5 high).
-	place an error in here to see if it compiles
-  ADCSRB = (ADCSRB & ~(1 << MUX5)) | (((pin >> 3) & 0x01) << MUX5);
-#endif
-  
+  // Set the analog multiplexer channel
 	ADMUX = (channel & 0x07);
 
 	// start the conversion
@@ -84,7 +80,7 @@ uint8_t A_SetD1(uint8_t port, uint8_t mode, uint8_t state){
 }
 
 uint8_t A_Set9V(uint8_t port, uint8_t state){
-  DDRD  |=  (0x40 << port);            // Set PD6/PD7 as output
-  if(state)PORTD |=  (0x40 << port);   // Set PD6/PD7 high
-  else     PORTD &= ~(0x40 << port);   // Set PD6/PD7 low  
+  DDRD |= (0x40 << port);             // Set PD6/PD7 as output
+  if(state) PORTD |=  (0x40 << port);  // Set PD6/PD7 high  
+  else      PORTD &= ~(0x40 << port);  // Set PD6/PD7 low
 }
