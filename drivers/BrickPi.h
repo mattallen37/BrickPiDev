@@ -50,7 +50,7 @@
 #define TYPE_MOTOR_SPEED               1
 #define TYPE_MOTOR_POSITION            2
 
-//#define TYPE_SENSOR_RAW                0 // - 31
+#define TYPE_SENSOR_RAW                0 // - 31
 #define TYPE_SENSOR_LIGHT_OFF          0
 #define TYPE_SENSOR_LIGHT_ON           (MASK_D0_M | MASK_D0_S)
 #define TYPE_SENSOR_TOUCH              32
@@ -169,7 +169,7 @@ unsigned char BitsNeeded(unsigned long value){
 int BrickPiSetupSensors(){
   unsigned char i = 0;
   while(i < 2){
-    ii = 0;
+    int ii = 0;
     while(ii < 256){
       Array[ii] = 0;
       ii++;
@@ -178,7 +178,7 @@ int BrickPiSetupSensors(){
     Array[BYTE_MSG_TYPE] = MSG_TYPE_SENSOR_TYPE;
     Array[BYTE_SENSOR_1_TYPE] = BrickPi.SensorType[PORT_1 + (i * 2)];
     Array[BYTE_SENSOR_2_TYPE] = BrickPi.SensorType[PORT_2 + (i * 2)];
-    unsigned char ii = 0;
+    ii = 0;
     while(ii < 2){
       unsigned char port = (i * 2) + ii;
       if(Array[BYTE_SENSOR_1_TYPE + ii] == TYPE_SENSOR_I2C
@@ -247,8 +247,8 @@ __RETRY_COMMUNICATION__:
     ii = 0;                 // use this for encoder offset support
     while(ii < 2){
       unsigned char port = (i * 2) + ii;
-      if(EncoderOffset[port]){
-        long Temp_Value = EncoderOffset[port];
+      if(BrickPi.EncoderOffset[port]){
+        long Temp_Value = BrickPi.EncoderOffset[port];
         unsigned char Temp_ENC_DIR;
         unsigned char Temp_BitsNeeded;
         
@@ -315,8 +315,8 @@ __RETRY_COMMUNICATION__:
     int result = BrickPiRx(&BytesReceived, Array, 7500);
     
     if(result != -2){                            // -2 is the only error that indicates that the BrickPi uC did not properly receive the message
-      EncoderOffset[((i * 2) + PORT_A)] = 0;
-      EncoderOffset[((i * 2) + PORT_B)] = 0;
+      BrickPi.EncoderOffset[((i * 2) + PORT_A)] = 0;
+      BrickPi.EncoderOffset[((i * 2) + PORT_B)] = 0;
     }
     
     if(result || (Array[BYTE_MSG_TYPE] != MSG_TYPE_VALUES)){

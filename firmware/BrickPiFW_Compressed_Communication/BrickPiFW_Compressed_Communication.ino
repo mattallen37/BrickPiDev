@@ -483,8 +483,9 @@ void UpdateSensors(){
       break;
       case TYPE_SENSOR_I2C:
       case TYPE_SENSOR_I2C_9V:
+        SEN[port] = 0;
         for(byte device = 0; device < I2C_Devices[port]; device++){
-          SEN[port] = ((I2C_Transfer(port, I2C_Addr[port][device], I2C_Speed[port], (SensorSettings[port][device] & BIT_I2C_MID), I2C_Out_Bytes[port][device], I2C_Out_Array[port][device], I2C_In_Bytes[port][device], I2C_In_Array[port][device]) & 0x01) << device); // The success/failure result of the I2C transaction(s) is stored as 1 bit in SEN.
+          SEN[port] |= ((I2C_Transfer(port, I2C_Addr[port][device], I2C_Speed[port], (SensorSettings[port][device] & BIT_I2C_MID), I2C_Out_Bytes[port][device], I2C_Out_Array[port][device], I2C_In_Bytes[port][device], I2C_In_Array[port][device]) & 0x01) << device); // The success/failure result of the I2C transaction(s) is stored as 1 bit in SEN.
         }
       break;
       default:
