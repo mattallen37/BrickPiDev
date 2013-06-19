@@ -42,10 +42,16 @@ int V1, V2, V3;
 
 //int SpeedLeft, SpeedRight;
 
-#define PSP_NXPort  PORT_4
+/*#define PSP_NXPort  PORT_4
 #define PSP_NXSpeed 0//20
 #define NXTChuckPort  PORT_3
-#define NXTChuckSpeed 0//20
+#define NXTChuckSpeed 0//20*/
+
+#define I2C_PORT  PORT_1
+#define I2C_SPEED 0
+
+#define I2C_DEVICE_NXTCHUCK 0
+#define I2C_DEVICE_PSP_NX   1
 
 int main() {
   ClearTick();
@@ -68,44 +74,51 @@ int main() {
   BrickPi.SensorType[PORT_3] = TYPE_SENSOR_RAW;//TYPE_SENSOR_COLOR_FULL;
   BrickPi.SensorType[PORT_4] = TYPE_SENSOR_RAW;//TYPE_SENSOR_ULTRASONIC_CONT;
 
-  BrickPi.SensorType     [NXTChuckPort]    = TYPE_SENSOR_I2C;
-  BrickPi.SensorSettings [NXTChuckPort][0] = 0;
-  BrickPi.SensorI2CSpeed [NXTChuckPort]    = NXTChuckSpeed;
-  BrickPi.SensorI2CAddr  [NXTChuckPort][0] = 0xA4;
+  BrickPi.SensorType       [I2C_PORT]    = TYPE_SENSOR_I2C_9V;
+  BrickPi.SensorI2CSpeed   [I2C_PORT]    = I2C_SPEED;
+
+  BrickPi.SensorI2CDevices [I2C_PORT]    = 2;
+  
+  BrickPi.SensorSettings   [I2C_PORT][I2C_DEVICE_NXTCHUCK] = 0;  
+  BrickPi.SensorI2CAddr    [I2C_PORT][I2C_DEVICE_NXTCHUCK] = 0xA4;
+  
+  BrickPi.SensorSettings   [I2C_PORT][I2C_DEVICE_PSP_NX]   = 0;  
+  BrickPi.SensorI2CAddr    [I2C_PORT][I2C_DEVICE_PSP_NX]   = 0x02;
+  
   if(BrickPiSetupSensors())
     return 0;
   
-  BrickPi.SensorI2CWrite [NXTChuckPort][0]    = 2;
-  BrickPi.SensorI2CRead  [NXTChuckPort][0]    = 0;
+  BrickPi.SensorI2CWrite [I2C_PORT][I2C_DEVICE_NXTCHUCK]    = 2;
+  BrickPi.SensorI2CRead  [I2C_PORT][I2C_DEVICE_NXTCHUCK]    = 0;
   
-  BrickPi.SensorI2COut   [NXTChuckPort][0][0] = 0xF0;
-  BrickPi.SensorI2COut   [NXTChuckPort][0][1] = 0x55;  
+  BrickPi.SensorI2COut   [I2C_PORT][I2C_DEVICE_NXTCHUCK][0] = 0xF0;
+  BrickPi.SensorI2COut   [I2C_PORT][I2C_DEVICE_NXTCHUCK][1] = 0x55;  
   if(BrickPiUpdateValues())
     return 0;
-  if(!BrickPi.Sensor[NXTChuckPort])
+  if(!(BrickPi.Sensor[I2C_PORT] & (0x01 << I2C_DEVICE_NXTCHUCK)))
     return 0;
 
-  BrickPi.SensorI2COut   [NXTChuckPort][0][0] = 0xFB;
-  BrickPi.SensorI2COut   [NXTChuckPort][0][1] = 0x00;  
+  BrickPi.SensorI2COut   [I2C_PORT][I2C_DEVICE_NXTCHUCK][0] = 0xFB;
+  BrickPi.SensorI2COut   [I2C_PORT][I2C_DEVICE_NXTCHUCK][1] = 0x00;  
   if(BrickPiUpdateValues())
     return 0;
-  if(!BrickPi.Sensor[NXTChuckPort])
+  if(!(BrickPi.Sensor[I2C_PORT] & (0x01 << I2C_DEVICE_NXTCHUCK)))
     return 0;  
   
-  BrickPi.SensorSettings [NXTChuckPort][0]    = BIT_I2C_SAME;
-  BrickPi.SensorI2CWrite [NXTChuckPort][0]    = 1;
-  BrickPi.SensorI2CRead  [NXTChuckPort][0]    = 6;
-  BrickPi.SensorI2COut   [NXTChuckPort][0][0] = 0x00;  
+  BrickPi.SensorSettings [I2C_PORT][I2C_DEVICE_NXTCHUCK]    = BIT_I2C_SAME;
+  BrickPi.SensorI2CWrite [I2C_PORT][I2C_DEVICE_NXTCHUCK]    = 1;
+  BrickPi.SensorI2CRead  [I2C_PORT][I2C_DEVICE_NXTCHUCK]    = 6;
+  BrickPi.SensorI2COut   [I2C_PORT][I2C_DEVICE_NXTCHUCK][0] = 0x00;  
 
-  BrickPi.SensorType     [PSP_NXPort]       = TYPE_SENSOR_I2C_9V;
-  BrickPi.SensorSettings [PSP_NXPort][0]    = BIT_I2C_SAME;
-  BrickPi.SensorI2CSpeed [PSP_NXPort]       = PSP_NXSpeed;
-  BrickPi.SensorI2CAddr  [PSP_NXPort][0]    = 0x02;
-  BrickPi.SensorI2CWrite [PSP_NXPort][0]    = 1;
-  BrickPi.SensorI2CRead  [PSP_NXPort][0]    = 6;
-  BrickPi.SensorI2COut   [PSP_NXPort][0][0] = 0x42;
+  BrickPi.SensorI2CWrite [I2C_PORT][I2C_DEVICE_PSP_NX]    = 0;
+  BrickPi.SensorI2CRead  [I2C_PORT][I2C_DEVICE_PSP_NX]    = 0;
+
+  BrickPi.SensorSettings [I2C_PORT][I2C_DEVICE_PSP_NX]    = BIT_I2C_SAME;
+  BrickPi.SensorI2CWrite [I2C_PORT][I2C_DEVICE_PSP_NX]    = 1;
+  BrickPi.SensorI2CRead  [I2C_PORT][I2C_DEVICE_PSP_NX]    = 6;
+  BrickPi.SensorI2COut   [I2C_PORT][I2C_DEVICE_PSP_NX][0] = 0x42;
   
-  BrickPi.SensorType[PORT_2] = TYPE_SENSOR_ULTRASONIC_CONT;
+//  BrickPi.SensorType[PORT_2] = TYPE_SENSOR_ULTRASONIC_CONT;
   
 /*  BrickPi.SensorType[PORT_2] = TYPE_SENSOR_RAW;//TYPE_SENSOR_LIGHT_ON; 
   BrickPi.SensorType[PORT_3] = TYPE_SENSOR_RAW;//TYPE_SENSOR_COLOR_FULL;
@@ -138,18 +151,18 @@ int main() {
             SpeedRight = 255;
           printf("SX: %3.1d  SY: %3.1d  AX: %4.1d  AY: %4.1d  AZ: %4.1d  B: %.1d  L: %3.1d  R: %3.1d\n", SX, SY, AX, AY, AZ, B, SpeedLeft, SpeedRight);*/
         
-        printf("Results: %3.1d %.1d %.1d\n", BrickPi.Sensor[PORT_2], BrickPi.Sensor[NXTChuckPort], BrickPi.Sensor[PSP_NXPort]);
+        printf("Results: %3.1d %.1d\n", BrickPi.Sensor[PORT_2], BrickPi.Sensor[I2C_PORT]);
         
-        if(BrickPi.Sensor[PSP_NXPort]){
-          printf("%3.1d %3.1d %3.1d %3.1d %3.1d %3.1d\n", BrickPi.SensorI2CIn[PSP_NXPort][0][0], BrickPi.SensorI2CIn[PSP_NXPort][0][1], BrickPi.SensorI2CIn[PSP_NXPort][0][2], BrickPi.SensorI2CIn[PSP_NXPort][0][3], BrickPi.SensorI2CIn[PSP_NXPort][0][4], BrickPi.SensorI2CIn[PSP_NXPort][0][5]);
+        if(BrickPi.Sensor[I2C_PORT] & (0x01 << I2C_DEVICE_PSP_NX)){
+          printf("%3.1d %3.1d %3.1d %3.1d %3.1d %3.1d\n", BrickPi.SensorI2CIn[I2C_PORT][I2C_DEVICE_PSP_NX][0], BrickPi.SensorI2CIn[I2C_PORT][I2C_DEVICE_PSP_NX][1], BrickPi.SensorI2CIn[I2C_PORT][I2C_DEVICE_PSP_NX][2], BrickPi.SensorI2CIn[I2C_PORT][I2C_DEVICE_PSP_NX][3], BrickPi.SensorI2CIn[I2C_PORT][I2C_DEVICE_PSP_NX][4], BrickPi.SensorI2CIn[I2C_PORT][I2C_DEVICE_PSP_NX][5]);
         }
-        if(BrickPi.Sensor[NXTChuckPort]){
-          SX = BrickPi.SensorI2CIn[NXTChuckPort][0][0];
-          SY = BrickPi.SensorI2CIn[NXTChuckPort][0][1];
-          AX = (BrickPi.SensorI2CIn[NXTChuckPort][0][2] << 2);
-          AY = (BrickPi.SensorI2CIn[NXTChuckPort][0][3] << 2);
-          AZ = (BrickPi.SensorI2CIn[NXTChuckPort][0][4] << 2);
-          B  = ((~BrickPi.SensorI2CIn[NXTChuckPort][0][5]) & 0x03);
+        if(BrickPi.Sensor[I2C_PORT] & (0x01 << I2C_DEVICE_NXTCHUCK)){
+          SX = BrickPi.SensorI2CIn[I2C_PORT][I2C_DEVICE_NXTCHUCK][0];
+          SY = BrickPi.SensorI2CIn[I2C_PORT][I2C_DEVICE_NXTCHUCK][1];
+          AX = (BrickPi.SensorI2CIn[I2C_PORT][I2C_DEVICE_NXTCHUCK][2] << 2);
+          AY = (BrickPi.SensorI2CIn[I2C_PORT][I2C_DEVICE_NXTCHUCK][3] << 2);
+          AZ = (BrickPi.SensorI2CIn[I2C_PORT][I2C_DEVICE_NXTCHUCK][4] << 2);
+          B  = ((~BrickPi.SensorI2CIn[I2C_PORT][I2C_DEVICE_NXTCHUCK][5]) & 0x03);
           
           VZ = 0;
           if(B & 0x01 && AX < 462)
