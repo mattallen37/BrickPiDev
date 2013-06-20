@@ -3,7 +3,7 @@
 *  matthewrichardson37<at>gmail.com
 *  http://mattallen37.wordpress.com/
 *  Initial date: June 4, 2013
-*  Last updated: June 18, 2013
+*  Last updated: June 20, 2013
 *
 *  You may use this code as you wish, provided you give credit where it's due.
 *
@@ -65,8 +65,8 @@
 #define TYPE_SENSOR_I2C                41
 #define TYPE_SENSOR_I2C_9V             42
 
-#define BIT_I2C_MID  0x01  // defined for each device
-#define BIT_I2C_SAME 0x02  // defined for each device
+#define BIT_I2C_MID  0x01  // Do one of those funny clock pulses between writing and reading. defined for each device.
+#define BIT_I2C_SAME 0x02  // The transmit data, and the number of bytes to read and write isn't going to change. defined for each device.
 
 #define INDEX_RED   0
 #define INDEX_GREEN 1

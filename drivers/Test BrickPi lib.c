@@ -3,7 +3,7 @@
 *  matthewrichardson37<at>gmail.com
 *  http://mattallen37.wordpress.com/
 *  Initial date: June 4, 2013
-*  Last updated: June 18, 2013
+*  Last updated: June 20, 2013
 *
 *  You may use this code as you wish, provided you give credit where it's due.
 *
@@ -47,19 +47,19 @@ int V1, V2, V3;
 #define NXTChuckPort  PORT_3
 #define NXTChuckSpeed 0//20*/
 
-#define US_PORT         PORT_3
+#define US_PORT         PORT_3                       // For the FW Ultrasonic sensor support, use port 3
 
-#define US_I2C_TYPE     TYPE_SENSOR_I2C_9V
-#define US_I2C_PORT     PORT_2
-#define US_I2C_SPEED    7
-#define US_I2C_DEVICE   0
-#define US_I2C_SETTINGS (BIT_I2C_SAME | BIT_I2C_MID)
+#define US_I2C_TYPE     TYPE_SENSOR_I2C_9V           // Sensor type is I2C, with 9v pullup
+#define US_I2C_PORT     PORT_2                       // Sensor port 2 (I2C bus 2)
+#define US_I2C_SPEED    7                            // 7 causes the bus to run at about 40k baud, which is about the fastest the NXT ultrasonic sensor supports
+#define US_I2C_DEVICE   0                            // device 0 on this bus
+#define US_I2C_SETTINGS (BIT_I2C_SAME | BIT_I2C_MID) // The message and message lengths will be the same, and it needs one of those funny clock pulses mid way, between the write and the read.
 
-#define I2C_PORT  PORT_1
-#define I2C_SPEED 0
+#define I2C_PORT  PORT_1                             // I2C bus for the NXTChuck and PSP-Nx
+#define I2C_SPEED 0                                  // delay for as little time as possible. Usually about 100k baud
 
-#define I2C_DEVICE_NXTCHUCK 0
-#define I2C_DEVICE_PSP_NX   1
+#define I2C_DEVICE_NXTCHUCK 0                        // NXTChuck is device 0 on this I2C bus
+#define I2C_DEVICE_PSP_NX   1                        // PSP-Nx is device 1 on this I2C bus
 
 int main() {
   ClearTick();
