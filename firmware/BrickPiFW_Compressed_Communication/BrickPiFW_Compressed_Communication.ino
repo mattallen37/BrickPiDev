@@ -3,7 +3,7 @@
  *  matthewrichardson37<at>gmail.com
  *  http://mattallen37.wordpress.com/
  *  Initial date: June 1, 2013
- *  Last updated: June 19, 2013
+ *  Last updated: July 2, 2013
  *
  *  You may use this code as you wish, provided you give credit where it's due.
  *
@@ -102,15 +102,15 @@
               sensor value 10 bits
 */
 
-#include "EEPROM.h"      // Arduino EEPROM library
-#include "BrickPiUART.h" // BrickPi UART library
-#include "BrickPiI2C.h"  // BrickPi I2C library
-#include "BrickPiA.h"    // BrickPi Analog library
-#include "BrickPiUS.h"   // BrickPi Ultrasonic sensor library
-#include "BrickPiM.h"    // BrickPi Motor library
-#include "BrickPiCS.h"   // BrickPi Color sensor library
+#include "EEPROM.h"              // Arduino EEPROM library
+#include "BrickPiUART.h"         // BrickPi UART library
+#include "BrickPiI2C.h"          // BrickPi I2C library
+#include "BrickPiA.h"            // BrickPi Analog sensor library
+#include "BrickPiUS.h"           // BrickPi Ultrasonic sensor library
+#include "BrickPiCS.h"           // BrickPi Color sensor library
+#include "BrickPiM.h"            // BrickPi Motor library
 
-#define BYTE_MSG_TYPE 0          // MSG_TYPE is the first byte.
+#define BYTE_MSG_TYPE          0 // MSG_TYPE is the first byte.
   #define MSG_TYPE_CHANGE_ADDR 1 // Change the UART address.
   #define MSG_TYPE_SENSOR_TYPE 2 // Change/set the sensor type.
   #define MSG_TYPE_VALUES      3 // Set the motor speed and direction, and return the sesnors and encoders.
@@ -183,7 +183,7 @@ void loop(){
   if(Result == 0){
     LastUpdate = millis();
     if(Array[BYTE_MSG_TYPE] == MSG_TYPE_E_STOP){
-      M_Control(0, 0, 0, 0, 0, 0);
+      M_Float();
     }
     else if(Array[BYTE_MSG_TYPE] == MSG_TYPE_CHANGE_ADDR && Bytes == 2){
       A_Config(PORT_1, 0);                            // Setup PORT_1 for touch sensor
@@ -200,7 +200,7 @@ void loop(){
   else if(Result == 1){
     LastUpdate = millis();
     if(Array[BYTE_MSG_TYPE] == MSG_TYPE_E_STOP){
-      M_Control(0, 0, 0, 0, 0, 0);
+      M_Float();
       Array[0] = MSG_TYPE_E_STOP;
       UART_WriteArray(1, Array);      
     }
@@ -231,7 +231,7 @@ void loop(){
     }
   }
   if(millis() > (LastUpdate + COMM_TIMEOUT)){   // If it timed out, float the motors
-    M_Control(0, 0, 0, 0, 0, 0);
+    M_Float();
   }
   byte i = 0;
   while(i < 2){

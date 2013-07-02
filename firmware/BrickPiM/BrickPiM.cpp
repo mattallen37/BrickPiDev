@@ -3,7 +3,7 @@
 *  matthewrichardson37<at>gmail.com
 *  http://mattallen37.wordpress.com/
 *  Initial date: May 30, 2013
-*  Last updated: June 5, 2013
+*  Last updated: July 2, 2013
 *
 *  You may use this code as you wish, provided you give credit where it's due.
 *
@@ -24,98 +24,106 @@ void M_Setup(){
   PCMSK2 |= 0x3C;                 // React to PCINT 18, 19, 20, and 21.
   PCICR |= 0x04;                  // Enable PCINT Enable 2
   
-  // Setup EN as HIGH, and PWM and DIR as LOW. Setup the EN, PWM, and DIR pins as outputs. 
-  PORTB = (PORTB & 0xC0) | 0x03;  // Leave PB6 and 7 alone. 0 and 1 HIGH. 2, 3, 4, and 5 LOW.
+  // Setup EN, PWM and DIR as LOW. Setup the EN, PWM, and DIR pins as outputs. 
+  PORTB = PORTB & 0xC0;  // Leave PB6 and 7 alone. 0, 1, 2, 3, 4, and 5 LOW.
   DDRB  |= 0x3F;                  // Set PB0 - 5 as output  
 }
+
+#if BrickPiVersion   == 1
+
+#elif BrickPiVersion == 2
+
+#endif
 
 void M_PWM(uint8_t port, uint16_t control){ // 8 bits of PWM, 1 bit dir, 1 bit enable
   if(port == PORT_A){
     if(control & 0x01){
-      PORTB |= 0x01;                                  // Enable motor A
+#if BrickPiVersion   == 1                             // Enable motor A
+      PORTB |= 0x01;                                  
+#elif BrickPiVersion == 2
+      PORTB |= 0x10;
+#endif
       // Set the PWM and DIR pins for motor A
       if(control & 0x02){                             // Reverse
         analogWrite(10, (~((control & 0x03FC) >> 2) & 0xFF));
+#if BrickPiVersion   == 1
         PORTB |= 0x10;
+#elif BrickPiVersion == 2
+        PORTB |= 0x01;
+#endif
       }
       else{                                           // Forward
         analogWrite(10, ((control & 0x03FC) >> 2));
+#if BrickPiVersion   == 1
         PORTB &= 0xEF;      
+#elif BrickPiVersion == 2
+        PORTB &= 0xFE;
+#endif
       }
     }
     else{
-      PORTB &= 0xFE;                                  // Disable motor A
+#if BrickPiVersion   == 1                             // Disable motor A
+      PORTB &= 0xFE;                                  
+#elif BrickPiVersion == 2
+      PORTB &= 0xEF;
+#endif
     }
     
-    if(!((control & 0x03FC) && (control & 0x01))){  // power 0 or disabled, so turn off motor
+    if(!((control & 0x03FC) && (control & 0x01))){    // power 0 or disabled, so turn off motor
       analogWrite(10, 0);
-      PORTB &= 0xEB;    
+#if BrickPiVersion   == 1                             // DIR and PWM pins LOW
+      PORTB &= 0xEB;
+#elif BrickPiVersion == 2
+      PORTB &= 0xFA;
+#endif    
     }    
   }
   else if(port == PORT_B){    
     if(control & 0x01){  
-      PORTB |= 0x02;                                  // Enable motor B
+#if BrickPiVersion   == 1                             // Enable motor B
+      PORTB |= 0x02;                                  
+#elif BrickPiVersion == 2
+      PORTB |= 0x20;
+#endif
       // Set the PWM and DIR pins for motor B
       if(control & 0x02){                             // Reverse
         analogWrite(11, (~((control & 0x03FC) >> 2) & 0xFF));
+#if BrickPiVersion   == 1
         PORTB |= 0x20;
+#elif BrickPiVersion == 2
+        PORTB |= 0x02;
+#endif
       }
       else{                                           // Forward
         analogWrite(11, ((control & 0x03FC) >> 2));
+#if BrickPiVersion   == 1
         PORTB &= 0xDF;      
+#elif BrickPiVersion == 2
+        PORTB &= 0xFD;
+#endif
       }
     }
     else{
-      PORTB &= 0xFD;                                  // Disable motor B
+#if BrickPiVersion   == 1                             // Disable motor B
+      PORTB &= 0xFD;                                  
+#elif BrickPiVersion == 2
+      PORTB &= 0xDF;
+#endif
     }
     
-    if(!((control & 0x03FC) && (control & 0x01))){  // power 0 or disabled, so turn off motor
+    if(!((control & 0x03FC) && (control & 0x01))){    // power 0 or disabled, so turn off motor
       analogWrite(11, 0);
+#if BrickPiVersion   == 1                             // DIR and PWM pins LOW
       PORTB &= 0xD7;    
+#elif BrickPiVersion == 2
+      PORTB &= 0xF5;
+#endif
     }    
   }
 }
 
-void M_Control(uint8_t MAS, uint8_t MBS, uint8_t MAD, uint8_t MBD, uint8_t MAE, uint8_t MBE){
-  // Enable/disable motor A
-  if(MAE){PORTB |= 0x01;}
-  else{PORTB &= 0xFE;}
-
-  // Enable/disable motor B
-  if(MBE){PORTB |= 0x02;}
-  else{PORTB &= 0xFD;} 
-
-  // Set the PWM and DIR pins for motor A
-  if(MAS){
-    if(MAD){                 // Forward
-      analogWrite(10, MAS);
-      PORTB &= 0xEF;
-    }
-    else{                    // Reverse
-      analogWrite(10, ~MAS);
-      PORTB |= 0x10;
-    }
-  }
-  else{                      // Off
-    analogWrite(10, 0);
-    PORTB &= 0xEB;
-  }
-
-  // Set the PWM and DIR pins for motor B
-  if(MBS){
-    if(MBD){                 // Forward
-      analogWrite(11, MBS);
-      PORTB &= 0xDF;
-    }
-    else{                    // Reverse
-      analogWrite(11, ~MBS);
-      PORTB |= 0x20;
-    }
-  }
-  else{                      // Off
-    analogWrite(11, 0);
-    PORTB &= 0xD7;
-  }
+void M_Float(){
+  PORTB &= 0xC0;
 }
 
 void M_Encoders(int32_t & MAE, int32_t & MBE){
