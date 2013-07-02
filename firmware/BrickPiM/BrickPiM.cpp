@@ -29,12 +29,6 @@ void M_Setup(){
   DDRB  |= 0x3F;                  // Set PB0 - 5 as output  
 }
 
-#if BrickPiVersion   == 1
-
-#elif BrickPiVersion == 2
-
-#endif
-
 void M_PWM(uint8_t port, uint16_t control){ // 8 bits of PWM, 1 bit dir, 1 bit enable
   if(port == PORT_A){
     if(control & 0x01){
