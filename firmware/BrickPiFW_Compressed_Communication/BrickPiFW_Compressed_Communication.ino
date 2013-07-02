@@ -416,6 +416,8 @@ void SetupSensors(){
   for(byte port = 0; port < 2; port++){  
     switch(SensorType[port]){
       case TYPE_SENSOR_TOUCH:
+        A_Config(port, 0);
+      break;
       case TYPE_SENSOR_ULTRASONIC_CONT:
         US_Setup(port);
       break;
