@@ -3,7 +3,7 @@
 *  matthewrichardson37<at>gmail.com
 *  http://mattallen37.wordpress.com/
 *  Initial date: June 4, 2013
-*  Last updated: June 20, 2013
+*  Last updated: July 2, 2013
 *
 *  You may use this code as you wish, provided you give credit where it's due.
 *
@@ -47,15 +47,17 @@ int V1, V2, V3;
 #define NXTChuckPort  PORT_3
 #define NXTChuckSpeed 0//20*/
 
+#define T_PORT          PORT_1
+
 #define US_PORT         PORT_3                       // For the FW Ultrasonic sensor support, use port 3
 
 #define US_I2C_TYPE     TYPE_SENSOR_I2C_9V           // Sensor type is I2C, with 9v pullup
-#define US_I2C_PORT     PORT_2                       // Sensor port 2 (I2C bus 2)
+#define US_I2C_PORT     PORT_4                       // Sensor port 2 (I2C bus 2)
 #define US_I2C_SPEED    7                            // 7 causes the bus to run at about 40k baud, which is about the fastest the NXT ultrasonic sensor supports
 #define US_I2C_DEVICE   0                            // device 0 on this bus
 #define US_I2C_SETTINGS (BIT_I2C_SAME | BIT_I2C_MID) // The message and message lengths will be the same, and it needs one of those funny clock pulses mid way, between the write and the read.
 
-#define I2C_PORT  PORT_1                             // I2C bus for the NXTChuck and PSP-Nx
+#define I2C_PORT  PORT_2                             // I2C bus for the NXTChuck and PSP-Nx
 #define I2C_SPEED 0                                  // delay for as little time as possible. Usually about 100k baud
 
 #define I2C_DEVICE_NXTCHUCK 0                        // NXTChuck is device 0 on this I2C bus
@@ -76,6 +78,10 @@ int main() {
 
   BrickPi.Address[0] = 1;
   BrickPi.Address[1] = 2;
+  
+  BrickPi.Timeout = 100;                       // Communication timeout (how long in ms since the last valid communication before floating the motors). 0 disables the timeout.
+  if(BrickPiSetTimeout())
+    return 0;
 
   BrickPi.SensorType[PORT_1] = TYPE_SENSOR_RAW;//TYPE_SENSOR_LIGHT_ON;
   BrickPi.SensorType[PORT_2] = TYPE_SENSOR_RAW;//TYPE_SENSOR_LIGHT_ON; 
@@ -136,6 +142,7 @@ int main() {
   BrickPi.SensorI2COut     [US_I2C_PORT][US_I2C_DEVICE][0] = 0x42;
   
   BrickPi.SensorType[US_PORT] = TYPE_SENSOR_ULTRASONIC_CONT;
+  BrickPi.SensorType[T_PORT] = TYPE_SENSOR_TOUCH;
   
 /*  BrickPi.SensorType[PORT_2] = TYPE_SENSOR_RAW;//TYPE_SENSOR_LIGHT_ON; 
   BrickPi.SensorType[PORT_3] = TYPE_SENSOR_RAW;//TYPE_SENSOR_COLOR_FULL;
@@ -168,7 +175,7 @@ int main() {
             SpeedRight = 255;
           printf("SX: %3.1d  SY: %3.1d  AX: %4.1d  AY: %4.1d  AZ: %4.1d  B: %.1d  L: %3.1d  R: %3.1d\n", SX, SY, AX, AY, AZ, B, SpeedLeft, SpeedRight);*/
         
-        printf("Results: %3.1d %.1d %.1d\n", BrickPi.Sensor[US_PORT], BrickPi.Sensor[US_I2C_PORT], BrickPi.Sensor[I2C_PORT]);
+        printf("Results: %.1d %3.1d %.1d %.1d\n", BrickPi.Sensor[T_PORT], BrickPi.Sensor[US_PORT], BrickPi.Sensor[US_I2C_PORT], BrickPi.Sensor[I2C_PORT]);
         
         if(BrickPi.Sensor[US_I2C_PORT] & (0x01 << US_I2C_DEVICE)){
           printf("%3.1d\n", BrickPi.SensorI2CIn[US_I2C_PORT][US_I2C_DEVICE][0]);

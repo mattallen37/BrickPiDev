@@ -110,12 +110,12 @@
 #include "BrickPiCS.h"           // BrickPi Color sensor library
 #include "BrickPiM.h"            // BrickPi Motor library
 
-#define BYTE_MSG_TYPE          0 // MSG_TYPE is the first byte.
-  #define MSG_TYPE_CHANGE_ADDR 1 // Change the UART address.
-  #define MSG_TYPE_SENSOR_TYPE 2 // Change/set the sensor type.
-  #define MSG_TYPE_VALUES      3 // Set the motor speed and direction, and return the sesnors and encoders.
-  #define MSG_TYPE_E_STOP      4 // Float motors immidately
-
+#define BYTE_MSG_TYPE               0 // MSG_TYPE is the first byte.
+  #define MSG_TYPE_CHANGE_ADDR      1 // Change the UART address.
+  #define MSG_TYPE_SENSOR_TYPE      2 // Change/set the sensor type.
+  #define MSG_TYPE_VALUES           3 // Set the motor speed and direction, and return the sesnors and encoders.
+  #define MSG_TYPE_E_STOP           4 // Float motors immidately
+  #define MSG_TYPE_TIMEOUT_SETTINGS 5 // Set the timeout
 
 // RPi to BrickPi
   
@@ -125,6 +125,9 @@
   // Sensor setup (MSG_TYPE_SENSOR_TYPE)
     #define BYTE_SENSOR_1_TYPE   1
     #define BYTE_SENSOR_2_TYPE   2
+  
+  // Timeout setup (MSG_TYPE_TIMEOUT_SETTINGS)
+    #define BYTE_TIMEOUT 1
 
 //#define TYPE_SENSOR_RAW                0 // - 31
 #define TYPE_SENSOR_LIGHT_OFF          0
@@ -144,7 +147,7 @@
 #define BIT_I2C_MID  0x01  // defined for each device
 #define BIT_I2C_SAME 0x02  // defined for each device
 
-#define COMM_TIMEOUT 250 // How many ms since the last communication, before timing out (and floating the motors).
+unsigned long COMM_TIMEOUT = 250; // How many ms since the last communication, before timing out (and floating the motors).
 
 void setup(){
   UART_Setup(500000);
@@ -216,7 +219,7 @@ void loop(){
       SetupSensors();                                 // Change PORT_1 settings back      
     }
     else if(Array[BYTE_MSG_TYPE] == MSG_TYPE_SENSOR_TYPE){
-      ParseSettings();
+      ParseSensorSettings();
       SetupSensors();
       Array[0] = MSG_TYPE_SENSOR_TYPE;
       UART_WriteArray(1, Array);
@@ -229,8 +232,13 @@ void loop(){
       Array[0] = MSG_TYPE_VALUES;
       UART_WriteArray(Bytes, Array);
     }
+    else if(Array[BYTE_MSG_TYPE] == MSG_TYPE_TIMEOUT_SETTINGS){
+      COMM_TIMEOUT = Array[BYTE_TIMEOUT] + (Array[(BYTE_TIMEOUT + 1)] * 256) + (Array[(BYTE_TIMEOUT + 2)] * 65536) + (Array[(BYTE_TIMEOUT + 3)] * 16777216);
+      Array[0] = MSG_TYPE_TIMEOUT_SETTINGS;
+      UART_WriteArray(1, Array);
+    }
   }
-  if(millis() > (LastUpdate + COMM_TIMEOUT)){   // If it timed out, float the motors
+  if(COMM_TIMEOUT && (millis() > (LastUpdate + COMM_TIMEOUT))){   // If it timed out, float the motors
     M_Float();
   }
   byte i = 0;
@@ -279,11 +287,10 @@ unsigned char BitsNeeded(unsigned long value){
   return 31;
 }
 
-void ParseSettings(){
+void ParseSensorSettings(){
   SensorType[PORT_1] = Array[BYTE_SENSOR_1_TYPE];
   SensorType[PORT_2] = Array[BYTE_SENSOR_2_TYPE];
   Bit_Offset = 0;
-
   for(byte port = 0; port < 2; port++){
     if(SensorType[port] == TYPE_SENSOR_I2C
     || SensorType[port] == TYPE_SENSOR_I2C_9V){
