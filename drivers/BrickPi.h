@@ -3,7 +3,7 @@
 *  matthewrichardson37<at>gmail.com
 *  http://mattallen37.wordpress.com/
 *  Initial date: June 4, 2013
-*  Last updated: July 2, 2013
+*  Last updated: July 17, 2013
 *
 *  You may use this code as you wish, provided you give credit where it's due.
 *
@@ -13,14 +13,37 @@
 #ifndef __BrickPi_h_
 #define __BrickPi_h_
 
-#define DEBUG
+//#define DEBUG
 
 #include <wiringPi.h>
+
+#ifndef Max
+#define Max(x, y) (x>y?x:y)                 // Return the highest value
+#endif
+#ifndef Min
+#define Min(x, y) (x<y?x:y)                 // Return the lowest value
+#endif
+#ifndef Clip
+#define Clip(v, x, y) (Min(Max(v, x), y))   // Return the value, clipped to x <= v <= y
+#endif
+#ifndef Dead
+#define Dead(v, x, y) ((v<=x)?v:(v>=y?v:0)) // Return the value, with a dead spot from x to y
+#endif
+#ifndef Abs
+#define Abs(v) (v<0?(-v):v)                 // Return the absolute value - untested
+#endif
 
 #define PORT_A 0
 #define PORT_B 1
 #define PORT_C 2
 #define PORT_D 3
+
+#define TYPE_MOTOR_FLOAT     0    // Float motor
+#define TYPE_MOTOR_SPEED     1    // Motor speed control
+#define TYPE_MOTOR_POSITION  2    // Motor position control
+  #define MOTOR_KP_DEFAULT   2.0  // Motor position control - Proportional Konstant
+  #define MOTOR_KD_DEFAULT   5.0  // Motor position control - Derivative Konstant
+  #define MOTOR_DEAD_DEFAULT 10   // A dead-spot in the active motor control. For speeds in the range of -MOTOR_DEAD_DEFAULT to MOTOR_DEAD_DEFAULT, the motor won't run. Outside that range, the motor value is then increased (from 0) by MOTOR_DEAD_DEFAULT.
 
 #define PORT_1 0
 #define PORT_2 1
@@ -50,9 +73,9 @@
   // Timeout setup (MSG_TYPE_TIMEOUT_SETTINGS)
     #define BYTE_TIMEOUT 1
 
-#define TYPE_MOTOR_PWM                 0
+/*#define TYPE_MOTOR_PWM                 0
 #define TYPE_MOTOR_SPEED               1
-#define TYPE_MOTOR_POSITION            2
+#define TYPE_MOTOR_POSITION            2*/
 
 #define TYPE_SENSOR_RAW                0 // - 31
 #define TYPE_SENSOR_LIGHT_OFF          0
@@ -80,39 +103,43 @@
 void BrickPiTx(unsigned char dest, unsigned char ByteCount, unsigned char OutArray[]);
 
 struct BrickPiStruct{
-  unsigned char Address        [2];     // Communication addresses
-  unsigned long Timeout           ;     // Communication timeout (how long in ms since the last valid communication before floating the motors). 0 disables the timeout.
+  unsigned char Address                [2];        // Communication addresses
+  unsigned long Timeout                   ;        // Communication timeout (how long in ms since the last valid communication before floating the motors). 0 disables the timeout.
 
 /*
   Motors
 */
-  int           MotorSpeed     [4];     // Motor speeds, from -255 to 255
-  unsigned char MotorEnable    [4];     // Motor enable/disable
-
+  int           MotorSpeed             [4];        // Motor speeds, from -255 to 255
+  unsigned char MotorEnable            [4];        // Motor mode. Float, Speed, Position.
+  long          MotorTarget            [4];        // Motor target position. This is implemented on the RPi, not in the BrickPi FW.
+  long          MotorTargetLastError   [4];        // Value used internally for motor position regulation.
+  float         MotorTargetKP          [4];        // Percent Konstant - used for motor position regulation.
+  float         MotorTargetKD          [4];        // Derivative Konstant - used for motor position regulation.
+  unsigned char MotorDead              [4];        // How wide of a gap to leave between 0 and the value speed value used for running to a target position.
 /*
   Encoders
 */
-  long          EncoderOffset  [4];     // Encoder offsets (not yet implemented)
-  long          Encoder        [4];     // Encoder values
+  long          EncoderOffset          [4];        // Encoder offsets
+  long          Encoder                [4];        // Encoder values
 
 /*
   Sensors
 */
-  long          Sensor         [4];     // Primary sensor values
-  long          SensorArray    [4][4];  // For more sensor values for the sensor (e.g. for color sensor FULL mode).
-  unsigned char SensorType     [4];     // Sensor types
-  unsigned char SensorSettings [4][8];  // Sensor settings, used for specifying I2C settings.
+  long          Sensor                 [4];        // Primary sensor values
+  long          SensorArray            [4][4];     // For more sensor values for the sensor (e.g. for color sensor FULL mode).
+  unsigned char SensorType             [4];        // Sensor types
+  unsigned char SensorSettings         [4][8];     // Sensor settings, used for specifying I2C settings.
 
 /*
   I2C
 */
-  unsigned char SensorI2CDevices[4];        // How many I2C devices are on each bus (1 - 8).
-  unsigned char SensorI2CSpeed  [4];        // The I2C speed.
-  unsigned char SensorI2CAddr   [4][8];     // The I2C address of each device on each bus.  
-  unsigned char SensorI2CWrite  [4][8];     // How many bytes to write
-  unsigned char SensorI2CRead   [4][8];     // How many bytes to read
-  unsigned char SensorI2COut    [4][8][16]; // The I2C bytes to write
-  unsigned char SensorI2CIn     [4][8][16]; // The I2C input buffers
+  unsigned char SensorI2CDevices       [4];        // How many I2C devices are on each bus (1 - 8).
+  unsigned char SensorI2CSpeed         [4];        // The I2C speed.
+  unsigned char SensorI2CAddr          [4][8];     // The I2C address of each device on each bus.  
+  unsigned char SensorI2CWrite         [4][8];     // How many bytes to write
+  unsigned char SensorI2CRead          [4][8];     // How many bytes to read
+  unsigned char SensorI2COut           [4][8][16]; // The I2C bytes to write
+  unsigned char SensorI2CIn            [4][8][16]; // The I2C input buffers
 };
 
 struct BrickPiStruct BrickPi;
@@ -138,7 +165,7 @@ int BrickPiSetTimeout(){
   unsigned char i = 0;
   while(i < 2){
     Array[BYTE_MSG_TYPE] = MSG_TYPE_TIMEOUT_SETTINGS;
-    Array[BYTE_TIMEOUT      ] = ( BrickPi.Timeout             & 0xFF);
+    Array[ BYTE_TIMEOUT     ] = ( BrickPi.Timeout             & 0xFF);
     Array[(BYTE_TIMEOUT + 1)] = ((BrickPi.Timeout / 256     ) & 0xFF);
     Array[(BYTE_TIMEOUT + 2)] = ((BrickPi.Timeout / 65536   ) & 0xFF);
     Array[(BYTE_TIMEOUT + 3)] = ((BrickPi.Timeout / 16777216) & 0xFF);
@@ -236,7 +263,7 @@ int BrickPiSetupSensors(){
     }
     unsigned char UART_TX_BYTES = (((Bit_Offset + 7) / 8) + 3);
     BrickPiTx(BrickPi.Address[i], UART_TX_BYTES, Array);
-    if(BrickPiRx(&BytesReceived, Array, 500000))
+    if(BrickPiRx(&BytesReceived, Array, 1000000))
       return -1;
     if(!(BytesReceived == 1 && Array[BYTE_MSG_TYPE] == MSG_TYPE_SENSOR_TYPE))
       return -1;
@@ -272,16 +299,17 @@ __RETRY_COMMUNICATION__:
       unsigned char port = (i * 2) + ii;
       if(BrickPi.EncoderOffset[port]){
         long Temp_Value = BrickPi.EncoderOffset[port];
-        unsigned char Temp_ENC_DIR;
-        unsigned char Temp_BitsNeeded;
+        unsigned char Temp_ENC_DIR = 0;
+        unsigned char Temp_BitsNeeded = 0;
         
         AddBits(1, 0, 1, 1);
         if(Temp_Value < 0){
           Temp_ENC_DIR = 1;
           Temp_Value *= (-1);
-        }
-        Temp_BitsNeeded = (BitsNeeded(Temp_Value) + 1);
+        }        
+        Temp_BitsNeeded = BitsNeeded(Temp_Value);
         AddBits(1, 0, 5, Temp_BitsNeeded);
+        Temp_BitsNeeded++;
         Temp_Value *= 2;
         Temp_Value |= Temp_ENC_DIR;
         AddBits(1, 0, Temp_BitsNeeded, Temp_Value);
@@ -297,16 +325,40 @@ __RETRY_COMMUNICATION__:
     ii = 0;
     while(ii < 2){
       unsigned char port = (i * 2) + ii;
-      speed = BrickPi.MotorSpeed[port];
-      dir = 0;
-      if(speed < 0){
-        dir = 1;
-        speed *= (-1);
+      
+      if(BrickPi.MotorEnable[port] == TYPE_MOTOR_FLOAT){
+        AddBits(1, 0, 10, 0);
+      }else{
+        if(BrickPi.MotorEnable[port] == TYPE_MOTOR_SPEED){
+          speed = BrickPi.MotorSpeed[port];
+        }else if(BrickPi.MotorEnable[port] == TYPE_MOTOR_POSITION){
+          long error = BrickPi.MotorTarget[port] - BrickPi.Encoder[port];
+          float speed_f = (error * BrickPi.MotorTargetKP[port]) + ((error - BrickPi.MotorTargetLastError[port]) * BrickPi.MotorTargetKD[port]);
+          BrickPi.MotorTargetLastError[port] = error;
+          if(speed_f < BrickPi.MotorDead[port] && speed_f > -BrickPi.MotorDead[port]){
+            speed_f = 0;
+          }
+          if(speed_f > 0){
+            speed_f += BrickPi.MotorDead[port];
+          }else if(speed_f < 0){
+            speed_f -= BrickPi.MotorDead[port];
+          }
+          speed = Clip(speed_f, -255, 255); // Clip the speed to the range of -255 to 255.
+#ifdef DEBUG
+          printf("Speed: %d\n", speed);        
+#endif
+        }
+        
+        dir = 0;
+        if(speed < 0){
+          dir = 1;
+          speed *= (-1);
+        }
+        if(speed > 255){
+          speed = 255;
+        }
+        AddBits(1, 0, 10, ((((speed & 0xFF) << 2) | (dir << 1) | (0x01)) & 0x3FF));
       }
-      if(speed > 255){
-        speed = 255;
-      }
-      AddBits(1, 0, 10, ((((speed & 0xFF) << 2) | (dir << 1) | (BrickPi.MotorEnable[port] & 0x01)) & 0x3FF));
       ii++;
     }
     
@@ -334,8 +386,8 @@ __RETRY_COMMUNICATION__:
     
     unsigned char UART_TX_BYTES = (((Bit_Offset + 7) / 8) + 1);
     BrickPiTx(BrickPi.Address[i], UART_TX_BYTES, Array);
-    
-    int result = BrickPiRx(&BytesReceived, Array, 7500);
+    usleep(500);
+    int result = BrickPiRx(&BytesReceived, Array, 10000);
     
     if(result != -2){                            // -2 is the only error that indicates that the BrickPi uC did not properly receive the message
       BrickPi.EncoderOffset[((i * 2) + PORT_A)] = 0;
@@ -346,7 +398,7 @@ __RETRY_COMMUNICATION__:
 #ifdef DEBUG
       printf("BrickPiRx error: %d\n", result);
 #endif
-      if(Retried < 2){
+      if(Retried < 4){
         Retried++;
         goto __RETRY_COMMUNICATION__;
       }
@@ -367,12 +419,13 @@ __RETRY_COMMUNICATION__:
     
     ii = 0;
     while(ii < 2){
+      unsigned char port = ii + (i * 2);
       Temp_EncoderVal = GetBits(1, 0, Temp_BitsUsed[ii]);
       if(Temp_EncoderVal & 0x01){
         Temp_EncoderVal /= 2;
-        BrickPi.Encoder[ii + (i * 2)] = Temp_EncoderVal * (-1);}
+        BrickPi.Encoder[port] = Temp_EncoderVal * (-1);}
       else{
-        BrickPi.Encoder[ii + (i * 2)] = (Temp_EncoderVal / 2);}      
+        BrickPi.Encoder[port] = (Temp_EncoderVal / 2);}
       ii++;
     }
 
@@ -432,7 +485,19 @@ int BrickPiSetup(){
   UART_file_descriptor = serialOpen("/dev/ttyAMA0", 500000);
   if(UART_file_descriptor == -1){
     return -1;
-  }
+  }  
+  BrickPi.MotorTargetKP[PORT_A] = MOTOR_KP_DEFAULT;
+  BrickPi.MotorTargetKP[PORT_B] = MOTOR_KP_DEFAULT;
+  BrickPi.MotorTargetKP[PORT_C] = MOTOR_KP_DEFAULT;
+  BrickPi.MotorTargetKP[PORT_D] = MOTOR_KP_DEFAULT;
+  BrickPi.MotorTargetKD[PORT_A] = MOTOR_KD_DEFAULT;
+  BrickPi.MotorTargetKD[PORT_B] = MOTOR_KD_DEFAULT;
+  BrickPi.MotorTargetKD[PORT_C] = MOTOR_KD_DEFAULT;
+  BrickPi.MotorTargetKD[PORT_D] = MOTOR_KD_DEFAULT;
+  BrickPi.MotorDead[PORT_A] = MOTOR_DEAD_DEFAULT;
+  BrickPi.MotorDead[PORT_B] = MOTOR_DEAD_DEFAULT;
+  BrickPi.MotorDead[PORT_C] = MOTOR_DEAD_DEFAULT;
+  BrickPi.MotorDead[PORT_D] = MOTOR_DEAD_DEFAULT;
   return 0;
 }
 
@@ -463,6 +528,7 @@ int BrickPiRx(unsigned char *InBytes, unsigned char *InArray, long timeout){  //
   unsigned long OrigionalTick = CurrentTickUs();
   while(serialDataAvail(UART_file_descriptor) <= 0){
     if(timeout && ((CurrentTickUs() - OrigionalTick) >= timeout))return -2;
+    usleep(100);
   }
 
   RxBytes = 0;
