@@ -3,7 +3,7 @@
 *  matthewrichardson37<at>gmail.com
 *  http://mattallen37.wordpress.com/
 *  Initial date: June 4, 2013
-*  Last updated: July 17, 2013
+*  Last updated: July 18, 2013
 *
 *  You may use this code as you wish, provided you give credit where it's due.
 *
@@ -13,8 +13,10 @@
 #ifndef __BrickPi_h_
 #define __BrickPi_h_
 
-//#define DEBUG
+#define DEBUG
 
+#include <stdlib.h>
+#include <signal.h>
 #include <wiringPi.h>
 
 #ifndef Max
@@ -156,17 +158,55 @@ struct BrickPiStruct BrickPi;
 unsigned char Array[256];
 unsigned char BytesReceived;
 
-int BrickPiChangeAddress(unsigned char OldAddr, unsigned char NewAddr){
+int BrickPiEmergencyStop(){
+/*
+  Try 3 times to send E Stop to each of the uCs.
+  If failed:
+    Broadcast E Stop 3 times.
+*/
+  
   unsigned char i = 0;
+  while(i < 3){
+    unsigned char ii = 0;
+    while(ii < 2){
+      Array[BYTE_MSG_TYPE] = MSG_TYPE_E_STOP;
+      BrickPiTx(BrickPi.Address[ii], 1, Array);
+      if(BrickPiRx(&BytesReceived, Array, 2500)){
+        goto NEXT_TRY;
+      }
+      if(!(BytesReceived == 1 && Array[BYTE_MSG_TYPE] == MSG_TYPE_E_STOP)){
+        goto NEXT_TRY;
+      }
+      if(ii == 1){
+        return 0;
+      }
+      ii++;
+    }
+NEXT_TRY:
+    i++;
+  }
+  
+  i = 0;
+  while(i < 3){
+    Array[BYTE_MSG_TYPE] = MSG_TYPE_E_STOP;
+    BrickPiTx(0, 1, Array);
+    usleep(5000);
+    i++;
+  }
+  return -1;
+}
+
+int BrickPiChangeAddress(unsigned char OldAddr, unsigned char NewAddr){
+//  unsigned char i = 0;
   Array[BYTE_MSG_TYPE] = MSG_TYPE_CHANGE_ADDR;
   Array[BYTE_NEW_ADDRESS] = NewAddr;
   BrickPiTx(OldAddr, 2, Array);
-    
+  
   if(BrickPiRx(&BytesReceived, Array, 5000))
     return -1;
   if(!(BytesReceived == 1 && Array[BYTE_MSG_TYPE] == MSG_TYPE_CHANGE_ADDR))
     return -1;
-
+  
   return 0;
 }
 
@@ -355,9 +395,9 @@ __RETRY_COMMUNICATION__:
             speed_f -= BrickPi.MotorDead[port];
           }
           speed = Clip(speed_f, -255, 255); // Clip the speed to the range of -255 to 255.
-#ifdef DEBUG
+/*#ifdef DEBUG
           printf("Speed: %d\n", speed);        
-#endif
+#endif*/
         }
         
         dir = 0;
@@ -512,7 +552,41 @@ void BrickPiUpdateLEDs(){
 
 int UART_file_descriptor = 0; 
 
+/*
+  To safely shutdown the program, use:
+    sudo killall program -s 2
+  which sends signal 2 to process "program"
+*/
+
+void BrickPiExitSafely(int sig)                  // Exit the program safely
+{
+  signal(SIGINT , SIG_IGN);                      // Disable the signal interrupt
+  signal(SIGQUIT, SIG_IGN);                      // Disable the signal interrupt
+#ifdef DEBUG
+  printf("\nReceived exit signal %d\n", sig);    // Tell the user why the program is exiting
+#endif
+  pwmWrite    (1, 0);                            // Set the PWM of LED 1 to 0
+  digitalWrite(2, 0);                            // Set the state of LED 2 to 0
+  pinMode(1, INPUT);                             // Set LED 1 IO as INPUT
+  pinMode(2, INPUT);                             // Set LED 2 IO as INPUT
+  BrickPiEmergencyStop();                        // Send E Stop to the BrickPi
+  serialClose(UART_file_descriptor);             // Close the UART port  
+//  signal(SIGINT , BrickPiExitSafely);  Don't bother to re-enable
+//  signal(SIGQUIT, BrickPiExitSafely);  Don't bother to re-enable
+#ifdef DEBUG
+  printf("Exiting.\n", sig);                     // Tell the user that the program is exiting
+#endif
+  exit(0);                                       // Exit
+}
+
 int BrickPiSetup(){
+  if(signal(SIGINT , BrickPiExitSafely) == SIG_ERR ||           // Setup exit signal SIGINT
+     signal(SIGQUIT, BrickPiExitSafely) == SIG_ERR){            // and SIGQUIT
+#ifdef DEBUG
+    printf("Exit signal install error\n");                      // If it failed, print error message
+#endif
+    return -1;                                                  // and return -1
+  }
   if(wiringPiSetup() == -1)                                     // If wiringPiSetup failed
     return -1;                                                  //   return -1
   UART_file_descriptor = serialOpen("/dev/ttyAMA0", 500000);    // Open the UART port at 500kbps
