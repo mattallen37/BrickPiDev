@@ -33,6 +33,11 @@
 #define Abs(v) (v<0?(-v):v)                 // Return the absolute value - untested
 #endif
 
+#define LED_1   0
+#define LED_2   1
+#define LED_ON  1023
+#define LED_OFF 0
+
 #define PORT_A 0
 #define PORT_B 1
 #define PORT_C 2
@@ -73,10 +78,6 @@
   // Timeout setup (MSG_TYPE_TIMEOUT_SETTINGS)
     #define BYTE_TIMEOUT 1
 
-/*#define TYPE_MOTOR_PWM                 0
-#define TYPE_MOTOR_SPEED               1
-#define TYPE_MOTOR_POSITION            2*/
-
 #define TYPE_SENSOR_RAW                0 // - 31
 #define TYPE_SENSOR_LIGHT_OFF          0
 #define TYPE_SENSOR_LIGHT_ON           (MASK_D0_M | MASK_D0_S)
@@ -100,9 +101,16 @@
 #define INDEX_BLUE  2
 #define INDEX_BLANK 3
 
+int BrickPiSetLed(unsigned char led, int value);
+void BrickPiUpdateLEDs(void);
 void BrickPiTx(unsigned char dest, unsigned char ByteCount, unsigned char OutArray[]);
 
 struct BrickPiStruct{
+/*
+  LEDs
+*/
+  int LED                              [2];        // The state of the two LEDs
+
   unsigned char Address                [2];        // Communication addresses
   unsigned long Timeout                   ;        // Communication timeout (how long in ms since the last valid communication before floating the motors). 0 disables the timeout.
 
@@ -116,6 +124,7 @@ struct BrickPiStruct{
   float         MotorTargetKP          [4];        // Percent Konstant - used for motor position regulation.
   float         MotorTargetKD          [4];        // Derivative Konstant - used for motor position regulation.
   unsigned char MotorDead              [4];        // How wide of a gap to leave between 0 and the value speed value used for running to a target position.
+
 /*
   Encoders
 */
@@ -275,6 +284,8 @@ int BrickPiSetupSensors(){
 unsigned char Retried = 0; // For re-trying a failed update.
 
 int BrickPiUpdateValues(){
+  BrickPiUpdateLEDs();
+  
   unsigned char i = 0;
   unsigned int ii = 0;
   while(i < 2){
@@ -479,26 +490,49 @@ __RETRY_COMMUNICATION__:
   return 0;
 }
 
+int BrickPiSetLed(unsigned char led, int value){
+  switch(led){
+    case LED_1:
+      pwmWrite    (1,  value     );    // Set the PWM of LED 1 (0-1023)
+    break;
+    case LED_2:
+      digitalWrite(2, (value?1:0));    // Set the state of LED 2
+    break;
+    default:
+      return -1;
+  }
+  BrickPi.LED[led] = value;
+  return 0;
+}
+
+void BrickPiUpdateLEDs(){
+  pwmWrite    (1,  BrickPi.LED[LED_1]     );     // Set the PWM of LED 1 (0-1023)
+  digitalWrite(2, (BrickPi.LED[LED_2]?1:0));     // Set the state of LED 2
+}
+
 int UART_file_descriptor = 0; 
 
 int BrickPiSetup(){
-  UART_file_descriptor = serialOpen("/dev/ttyAMA0", 500000);
-  if(UART_file_descriptor == -1){
-    return -1;
-  }  
-  BrickPi.MotorTargetKP[PORT_A] = MOTOR_KP_DEFAULT;
-  BrickPi.MotorTargetKP[PORT_B] = MOTOR_KP_DEFAULT;
-  BrickPi.MotorTargetKP[PORT_C] = MOTOR_KP_DEFAULT;
-  BrickPi.MotorTargetKP[PORT_D] = MOTOR_KP_DEFAULT;
-  BrickPi.MotorTargetKD[PORT_A] = MOTOR_KD_DEFAULT;
-  BrickPi.MotorTargetKD[PORT_B] = MOTOR_KD_DEFAULT;
-  BrickPi.MotorTargetKD[PORT_C] = MOTOR_KD_DEFAULT;
-  BrickPi.MotorTargetKD[PORT_D] = MOTOR_KD_DEFAULT;
-  BrickPi.MotorDead[PORT_A] = MOTOR_DEAD_DEFAULT;
-  BrickPi.MotorDead[PORT_B] = MOTOR_DEAD_DEFAULT;
-  BrickPi.MotorDead[PORT_C] = MOTOR_DEAD_DEFAULT;
-  BrickPi.MotorDead[PORT_D] = MOTOR_DEAD_DEFAULT;
-  return 0;
+  if(wiringPiSetup() == -1)                                     // If wiringPiSetup failed
+    return -1;                                                  //   return -1
+  UART_file_descriptor = serialOpen("/dev/ttyAMA0", 500000);    // Open the UART port at 500kbps
+  if(UART_file_descriptor == -1)                                // If opening the port failed
+    return -1;                                                  //   return -1  
+  pinMode(1, PWM_OUTPUT);                                       // LED 1
+  pinMode(2, OUTPUT);                                           // LED 2 
+  BrickPi.MotorTargetKP[PORT_A] = MOTOR_KP_DEFAULT;             // Set to default
+  BrickPi.MotorTargetKP[PORT_B] = MOTOR_KP_DEFAULT;             //      ''
+  BrickPi.MotorTargetKP[PORT_C] = MOTOR_KP_DEFAULT;             //      ''
+  BrickPi.MotorTargetKP[PORT_D] = MOTOR_KP_DEFAULT;             //      ''
+  BrickPi.MotorTargetKD[PORT_A] = MOTOR_KD_DEFAULT;             //      ''
+  BrickPi.MotorTargetKD[PORT_B] = MOTOR_KD_DEFAULT;             //      ''
+  BrickPi.MotorTargetKD[PORT_C] = MOTOR_KD_DEFAULT;             //      ''
+  BrickPi.MotorTargetKD[PORT_D] = MOTOR_KD_DEFAULT;             //      ''
+  BrickPi.MotorDead[PORT_A] = MOTOR_DEAD_DEFAULT;               //      ''
+  BrickPi.MotorDead[PORT_B] = MOTOR_DEAD_DEFAULT;               //      ''
+  BrickPi.MotorDead[PORT_C] = MOTOR_DEAD_DEFAULT;               //      ''
+  BrickPi.MotorDead[PORT_D] = MOTOR_DEAD_DEFAULT;               //      ''
+  return 0;                                                     // return 0
 }
 
 void BrickPiTx(unsigned char dest, unsigned char ByteCount, unsigned char OutArray[]){
