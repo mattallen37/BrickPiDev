@@ -3,7 +3,7 @@
 *  matthewrichardson37<at>gmail.com
 *  http://mattallen37.wordpress.com/
 *  Initial date: June 4, 2013
-*  Last updated: July 2, 2013
+*  Last updated: Aug. 8, 2013
 *
 *  You may use this code as you wish, provided you give credit where it's due.
 *
@@ -66,6 +66,11 @@ int V1, V2, V3;
 int main() {
   ClearTick();
 
+  BrickPi.Address[0] = 1;
+  BrickPi.Address[1] = 2;
+  
+  BrickPi.Timeout = 100;                       // Communication timeout (how long in ms since the last valid communication before floating the motors). 0 disables the timeout.
+
   result = BrickPiSetup();
   printf("BrickPiSetup: %d\n", result);
   if(result)
@@ -75,13 +80,6 @@ int main() {
   printf("BrickPiChangeAddress: %d\n", result);  
 
   return 0;*/
-
-  BrickPi.Address[0] = 1;
-  BrickPi.Address[1] = 2;
-  
-  BrickPi.Timeout = 100;                       // Communication timeout (how long in ms since the last valid communication before floating the motors). 0 disables the timeout.
-  if(BrickPiSetTimeout())
-    return 0;
 
   BrickPi.SensorType[PORT_1] = TYPE_SENSOR_RAW;//TYPE_SENSOR_LIGHT_ON;
   BrickPi.SensorType[PORT_2] = TYPE_SENSOR_RAW;//TYPE_SENSOR_LIGHT_ON; 

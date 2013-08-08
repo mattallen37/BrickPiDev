@@ -3,7 +3,7 @@
 *  matthewrichardson37<at>gmail.com
 *  http://mattallen37.wordpress.com/
 *  Initial date: June 4, 2013
-*  Last updated: July 18, 2013
+*  Last updated: Aug. 8, 2013
 *
 *  You may use this code as you wish, provided you give credit where it's due.
 *
@@ -16,8 +16,6 @@
 
 #include "tick.h"
 
-#include <wiringPi.h>
-
 #include "BrickPi.h"
 
 //#include <unistd.h>  
@@ -28,13 +26,28 @@
 //#include <sys/ioctl.h>  
 #include <fcntl.h>
 
+// gcc -o program "/home/root/DB_MT/Raspberry Pi/C/Test BrickPi LEDs.c" -lrt -lm
+// ./program
+
+// nano "/media/BEAGLEBONE_/Matt's Technology/Raspberry Pi/C/Test BrickPi LEDs.c"
+// gcc -o program "/media/BEAGLEBONE_/Matt's Technology/Raspberry Pi/C/Test BrickPi LEDs.c" -lrt -lm
+// ./program
+
 // gcc -o program "/home/pi/dbrpi/C/Test BrickPi LEDs.c" -lrt -lm -L/usr/local/lib -lwiringPi
 // ./program
+
+#define delay(x) usleep(x * 1000)
+
 
 int result;
 
 int main() {
   ClearTick();
+
+  BrickPi.Address[0] = 1;
+  BrickPi.Address[1] = 2;
+  
+  BrickPi.Timeout = 100;                       // Communication timeout (how long in ms since the last valid communication before floating the motors). 0 disables the timeout.
 
   result = BrickPiSetup();
   printf("BrickPiSetup: %d\n", result);
@@ -47,15 +60,15 @@ int main() {
     for(l = 0; l < 5; l++){
       for(i = 0; i < 5; i++){
         BrickPiSetLed(LED_1, LED_ON);
-        delay(50);
+        delay(25);
         BrickPiSetLed(LED_1, LED_OFF);
-        delay(50);
+        delay(25);
       }
       for(i = 0; i < 5; i++){
         BrickPiSetLed(LED_2, LED_ON);
-        delay(50);
+        delay(25);
         BrickPiSetLed(LED_2, LED_OFF);
-        delay(50);
+        delay(25);
       }
     }
     
@@ -63,14 +76,14 @@ int main() {
       BrickPi.LED[LED_1] = LED_OFF;
       BrickPi.LED[LED_2] = LED_ON;
       BrickPiUpdateLEDs();
-      delay(250);
+      delay(100);
       BrickPi.LED[LED_1] = LED_ON;
       BrickPi.LED[LED_2] = LED_OFF;
       BrickPiUpdateLEDs();
-      delay(250);
+      delay(100);
     }
     
-    for(l = 0; l < 2; l++){
+/*    for(l = 0; l < 2; l++){
       BrickPi.LED[LED_2] = LED_ON;    
       for (i = 0; i < 1024; i++)
       {
@@ -85,7 +98,7 @@ int main() {
         BrickPiUpdateLEDs();
         delay(1);
       }
-    }
+    }*/
   }
   return 0;
 }
