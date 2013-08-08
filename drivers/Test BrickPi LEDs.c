@@ -10,6 +10,8 @@
 *  This is a program for testing the RPi BrickPi drivers.
 */
 
+#define DEBUG
+
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
@@ -34,10 +36,7 @@
 // ./program
 
 // gcc -o program "/home/pi/dbrpi/C/Test BrickPi LEDs.c" -lrt -lm -L/usr/local/lib -lwiringPi
-// ./program
-
-#define delay(x) usleep(x * 1000)
-
+// sudo ./program
 
 int result;
 
@@ -83,7 +82,7 @@ int main() {
       delay(100);
     }
     
-/*    for(l = 0; l < 2; l++){
+    for(l = 0; l < 2; l++){
       BrickPi.LED[LED_2] = LED_ON;    
       for (i = 0; i < 1024; i++)
       {
@@ -98,7 +97,7 @@ int main() {
         BrickPiUpdateLEDs();
         delay(1);
       }
-    }*/
+    }
   }
   return 0;
 }
