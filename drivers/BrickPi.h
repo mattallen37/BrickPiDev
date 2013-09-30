@@ -3,7 +3,7 @@
 *  matthewrichardson37<at>gmail.com
 *  http://mattallen37.wordpress.com/
 *  Initial date: June 4, 2013
-*  Last updated: Aug. 8, 2013
+*  Last updated: Sep. 19, 2013
 *
 *  You may use this code as you wish, provided you give credit where it's due.
 *
@@ -226,7 +226,6 @@ NEXT_TRY:
 
 // Change the BrickPi address, for one of the uCs
 int BrickPiChangeAddress(unsigned char OldAddr, unsigned char NewAddr){
-//  unsigned char i = 0;
   Array[BYTE_MSG_TYPE] = MSG_TYPE_CHANGE_ADDR;
   Array[BYTE_NEW_ADDRESS] = NewAddr;
   BrickPiTx(OldAddr, 2, Array);
@@ -281,6 +280,7 @@ int BrickPiSetBaud(unsigned long baud_old, unsigned long baud_new){
   }
   
   if(result){                         // If it failed, then it could be the original BrickPi FW which only supports 500k Baud.
+    UART_Configure(baud_old);
     if(BrickPiSetTimeout() == -1){    // Try setting the timeout, which will determine if communication is successful at the desired baud rate.
       return result;                  // If setting the timeout also failed, return the error.
     }
@@ -829,12 +829,75 @@ int BrickPiForceBaud(unsigned long baud){
   }
 #endif
 
-// Setup the host and the BrickPi. Determine the host, setup the LED GPIO, setup UART, set the BrickPi timeout, initialize the exit signal handlers.
-int BrickPiSetup(){
+int StringFind(char *src, char *fnd){
+  unsigned char i = 0;
+  unsigned char ii = 0;
+  while(src[i] != 0){
+    while(src[i + ii] == fnd[ii]){
+      ii++;
+      if(fnd[ii] == 0){
+        return i;
+      }
+    }
+    ii = 0;
+    i++;
+  }
+  return -1;
+}
+
+int Enable_ttyO4(){
+//  system("echo enable-uart5 > /sys/devices/bone_capemgr.*/slots");
+
+  char name[40];                 // Should only need 33 + NULL terminator = 34
+  strcpy(name, "/sys/devices");
+  // open /sys/devices
+  DIR *dirp;
+  dirp = opendir(name);
+  if(dirp == NULL){
+    return 0;
+  }
+  
+  // look for bone_capemgr.*
+  struct dirent *dp;
+  unsigned char done = 0;
+  while(!done){
+    dp = readdir(dirp);
+    if(dp == NULL){
+      closedir(dirp);
+      return 0;
+    }else{
+      if(StringFind(dp->d_name, "bone_capemgr.") == 0){    // sometimes it's "bone_capemgr.8" and sometimes it's "bone_capemgr.9"
+        closedir(dirp);
+        strcat(name, "/");                                 // append "/" to name
+        strcat(name, dp->d_name);                          // append dp->d_name to name
+        done = 1;
+      }
+    }
+  }
+  
+  strcat(name, "/slots"); // append "/slots" to name
+  
+  // open the file with the exact directory name  
+  int fd = open(name, O_RDWR);
+  if(fd == -1){   
+    return 0;
+  }
+  
+  // write "enable-uart5"
+  #ifdef DEBUG
+    printf("enable-uart5 > %s\n", name);
+  #endif  
+  write(fd, "enable-uart5", 12);
+  close(fd);
+  return 1;
+}
+
+// Determine the SW host. If it's BBB, then also enable ttyO4 if necessary (every time it boots).
+int Get_SW_HOST(){
   // Determine SW_HOST
-  #if ((COMPILE_HOST == HOST_RPI) || (COMPILE_HOST == HOST_BBB))
+/*  #if ((COMPILE_HOST == HOST_RPI) || (COMPILE_HOST == HOST_BBB))
     SW_HOST = COMPILE_HOST;
-  #else
+  #else*/
     #ifdef DEBUG
       printf("Determining SW_HOST...\n");
     #endif
@@ -853,10 +916,15 @@ int BrickPiSetup(){
         #endif
       }else{
         if(FileExists("/dev", "ttyO0") == 1){
-        #ifdef DEBUG
-          printf("ttyO0 exists\n");
-        #endif
-          system("echo enable-uart5 > /sys/devices/bone_capemgr.8/slots");
+          #ifdef DEBUG
+            if(Enable_ttyO4() == 1){
+              printf("Enable ttyO4: success\n");
+            }else{
+              printf("Enable ttyO4: failure\n");          
+            }            
+          #else
+            Enable_ttyO4();
+          #endif
           if(FileExists("/dev", "ttyO4") == 1){
             SW_HOST = HOST_BBB;
             #ifdef DEBUG
@@ -871,7 +939,7 @@ int BrickPiSetup(){
         }
       }
     }
-  #endif
+//  #endif
 
   // Print the SW_HOST
   #ifdef DEBUG  
@@ -885,7 +953,11 @@ int BrickPiSetup(){
     #endif
     return -1;
   }
+  
+  return 0;
+}
 
+int BrickPiSetupLEDs(){
   // Setup the LED GPIOs based on the COMPILE_HOST or SW_HOST
   #if COMPILE_HOST == HOST_RPI
     if(wiringPiSetup() == -1)                                     // If wiringPiSetup failed
@@ -893,6 +965,7 @@ int BrickPiSetup(){
     pinMode(1, PWM_OUTPUT);                                       // LED 1
     pinMode(2, OUTPUT);                                           // LED 2
   #else
+    
     // If LED 1 file is already open, close it
     if(LED_1_value_file_descriptor != -1){
       close(LED_1_value_file_descriptor);
@@ -903,6 +976,7 @@ int BrickPiSetup(){
       close(LED_2_value_file_descriptor);
       LED_2_value_file_descriptor = -1;
     }
+    
     // Setup the LED GPIOs specific to the host platform
     if(SW_HOST == HOST_RPI){
       RPiRev = GetRPiRev();
@@ -940,25 +1014,34 @@ int BrickPiSetup(){
       return -1;
     }
   #endif
-  
+  return 0;
+}
+
+int BrickPiOpenUART(){
   // If UART port is open already, then close it
   if(UART_file_descriptor != -1){                  
     close(UART_file_descriptor);
     UART_file_descriptor = -1;
   }
+
   // Open the UART port specific to the host, and set BAUD_IDEAL accordingly
   if(SW_HOST == HOST_RPI){
     UART_file_descriptor = open ("/dev/ttyAMA0", O_RDWR | O_NOCTTY | O_NDELAY | O_NONBLOCK);
     BAUD_IDEAL = 500000;
   }else if(SW_HOST == HOST_BBB){
     UART_file_descriptor = open ("/dev/ttyO4", O_RDWR | O_NOCTTY | O_NDELAY | O_NONBLOCK);
+//    UART_file_descriptor = open ("/dev/ttyUSB0", O_RDWR | O_NOCTTY | O_NDELAY | O_NONBLOCK);
     BAUD_IDEAL = 115200;
-  }
+  }  
+  
   // If it failed to open the UART port
   if (UART_file_descriptor == -1){
     return -1;
   }
-  
+  return 0;
+}
+
+int BrickPiConfigBaud(){
   // Set the UART Baud rate to BAUD_IDEAL
   unsigned char i = 0;
   while(i < 5){    
@@ -974,12 +1057,46 @@ int BrickPiSetup(){
       return -1;
     i++;
   }
+  return 0;
+}
+
+// Setup the host and the BrickPi. Determine the host, setup the LED GPIO, setup UART, set the BrickPi timeout, initialize the exit signal handlers.
+int BrickPiSetup(){
+  // Setup the exit signal handlers  
+  if(signal(SIGINT , BrickPiExitSafely) == SIG_ERR ||           // Setup exit signal SIGINT
+    signal(SIGQUIT, BrickPiExitSafely) == SIG_ERR){             // and SIGQUIT
+    #ifdef DEBUG
+      printf("Exit signal install error\n");
+    #endif
+    return -1;                                                  // and return -1
+  }
+
+  // Determine the SW_HOST  
+  if(Get_SW_HOST()){
+    return -1;
+  }
+  
+  // Setup the LED IOs  
+  if(BrickPiSetupLEDs()){
+    return -1;
+  }
+  
+  // Open the UART port  
+  if(BrickPiOpenUART()){
+    return -1;
+  }
+  
+  // Set the BAUD rate to BAUD_IDEAL  
+  if(BrickPiConfigBaud()){
+    return -1;
+  }
+  
   // Set the BrickPi timeout
   if(BrickPiSetTimeout() == -1){
     return -1;
   }
   
-// Setup the motor defaults  
+  // Setup the motor defaults  
   BrickPi.MotorTargetKP[PORT_A] = MOTOR_KP_DEFAULT;             // Set to default
   BrickPi.MotorTargetKP[PORT_B] = MOTOR_KP_DEFAULT;             //      ''
   BrickPi.MotorTargetKP[PORT_C] = MOTOR_KP_DEFAULT;             //      ''
@@ -992,17 +1109,43 @@ int BrickPiSetup(){
   BrickPi.MotorDead[PORT_B] = MOTOR_DEAD_DEFAULT;               //      ''
   BrickPi.MotorDead[PORT_C] = MOTOR_DEAD_DEFAULT;               //      ''
   BrickPi.MotorDead[PORT_D] = MOTOR_DEAD_DEFAULT;               //      ''
+  
+  return 0;                                                     // return 0
+}
 
-// Setup the exit signal handlers  
+int BrickPiSetupAddress(unsigned char OldAddr, unsigned char NewAddr){
+  // Setup the exit signal handlers  
   if(signal(SIGINT , BrickPiExitSafely) == SIG_ERR ||           // Setup exit signal SIGINT
-     signal(SIGQUIT, BrickPiExitSafely) == SIG_ERR){            // and SIGQUIT
-#ifdef DEBUG
-    printf("Exit signal install error\n");
-#endif
+    signal(SIGQUIT, BrickPiExitSafely) == SIG_ERR){             // and SIGQUIT
+    #ifdef DEBUG
+      printf("Exit signal install error\n");
+    #endif
     return -1;                                                  // and return -1
   }
 
-  return 0;                                                     // return 0
+  // Determine the SW_HOST  
+  if(Get_SW_HOST()){
+    return -1;
+  }
+  
+  // Setup the LED IOs  
+  if(BrickPiSetupLEDs()){
+    return -1;
+  }
+  
+  // Open the UART port  
+  if(BrickPiOpenUART()){
+    return -1;
+  }
+  
+  UART_Configure(BAUD_DEFAULT);  
+  if(BrickPiChangeAddress(OldAddr, NewAddr)){
+    UART_Configure(BAUD_IDEAL);
+    if(BrickPiChangeAddress(OldAddr, NewAddr)){
+      return -1;
+    }
+  }
+  return 0;
 }
 
 // Send an array of data to the BrickPi. Trash any rx bytes, transmit the message, and wait until is is sent.

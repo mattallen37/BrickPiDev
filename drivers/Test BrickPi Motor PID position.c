@@ -16,7 +16,7 @@
 
 #include "tick.h"
 
-#include <wiringPi.h>
+//#include <wiringPi.h>
 
 #include "BrickPi.h"
 
@@ -27,6 +27,9 @@
 #include <linux/i2c-dev.h>  
 //#include <sys/ioctl.h>  
 #include <fcntl.h>
+
+// gcc -o program "/home/root/DB_MT/Raspberry Pi/C/Test BrickPi Motor PID position.c" -lrt -lm
+// ./program
 
 // gcc -o program "Test BrickPi Motor PID position.c" -lrt -lm -L/usr/local/lib -lwiringPi
 // ./program
@@ -47,6 +50,8 @@ int main() {
     return 0;
 
   BrickPi.MotorEnable[PORT_B] = TYPE_MOTOR_POSITION;
+  BrickPi.MotorEnable[PORT_C] = TYPE_MOTOR_POSITION;
+  BrickPi.MotorEnable[PORT_D] = TYPE_MOTOR_POSITION;
   
   result = BrickPiSetupSensors();
   printf("BrickPiSetupSensors: %d\n", result); 
@@ -55,6 +60,8 @@ int main() {
       result = BrickPiUpdateValues();
       if(!result){
         BrickPi.MotorTarget[PORT_B] = BrickPi.Encoder[PORT_A];
+        BrickPi.MotorTarget[PORT_C] = BrickPi.Encoder[PORT_B];
+        BrickPi.MotorTarget[PORT_D] = BrickPi.Encoder[PORT_C];
       }
       usleep(10000);
     }

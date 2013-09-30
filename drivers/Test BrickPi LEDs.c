@@ -3,7 +3,7 @@
 *  matthewrichardson37<at>gmail.com
 *  http://mattallen37.wordpress.com/
 *  Initial date: June 4, 2013
-*  Last updated: Aug. 8, 2013
+*  Last updated: Sep. 24, 2013
 *
 *  You may use this code as you wish, provided you give credit where it's due.
 *
@@ -82,7 +82,7 @@ int main() {
       delay(100);
     }
     
-    for(l = 0; l < 2; l++){
+/*    for(l = 0; l < 2; l++){
       BrickPi.LED[LED_2] = LED_ON;    
       for (i = 0; i < 1024; i++)
       {
@@ -97,7 +97,7 @@ int main() {
         BrickPiUpdateLEDs();
         delay(1);
       }
-    }
+    }*/
   }
   return 0;
 }
