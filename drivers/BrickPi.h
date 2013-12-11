@@ -3,7 +3,7 @@
 *  matthewrichardson37<at>gmail.com
 *  http://mattallen37.wordpress.com/
 *  Initial date: June 4, 2013
-*  Last updated: Sep. 19, 2013
+*  Last updated: Dec  4, 2013
 *
 *  You may use this code as you wish, provided you give credit where it's due.
 *
@@ -12,6 +12,10 @@
 
 #ifndef __BrickPi_h_
 #define __BrickPi_h_
+
+#ifndef NUMBER_OF_BRICKPIS
+  #define NUMBER_OF_BRICKPIS 1
+#endif
 
 #define HOST_RPI 1
 #define HOST_BBB 2
@@ -28,7 +32,9 @@
 #include <fcntl.h>
 #include <termios.h>
 #include <dirent.h>
-#include <string.h>
+#include <string.h> 
+#include <stdio.h>  
+#include <linux/i2c-dev.h>  
 
 #if COMPILE_HOST == HOST_RPI
   #include <wiringPi.h>
@@ -140,44 +146,44 @@ struct BrickPiStruct{
 */
   int LED                              [2];        // The state of the two LEDs
 
-  unsigned char Address                [2];        // Communication addresses
-  unsigned long Timeout                   ;        // Communication timeout (how long in ms since the last valid communication before floating the motors). 0 disables the timeout.
+  unsigned char Address                [NUMBER_OF_BRICKPIS * 2];        // Communication addresses
+  unsigned long Timeout                                        ;        // Communication timeout (how long in ms since the last valid communication before floating the motors). 0 disables the timeout.
 
 /*
   Motors
 */
-  int           MotorSpeed             [4];        // Motor speeds, from -255 to 255
-  unsigned char MotorEnable            [4];        // Motor mode. Float, Speed, Position.
-  long          MotorTarget            [4];        // Motor target position. This is implemented on the RPi, not in the BrickPi FW.
-  long          MotorTargetLastError   [4];        // Value used internally for motor position regulation.
-  float         MotorTargetKP          [4];        // Percent Konstant - used for motor position regulation.
-  float         MotorTargetKD          [4];        // Derivative Konstant - used for motor position regulation.
-  unsigned char MotorDead              [4];        // How wide of a gap to leave between 0 and the value speed value used for running to a target position.
+  int           MotorSpeed             [NUMBER_OF_BRICKPIS * 4];        // Motor speeds, from -255 to 255
+  unsigned char MotorEnable            [NUMBER_OF_BRICKPIS * 4];        // Motor mode. Float, Speed, Position.
+  long          MotorTarget            [NUMBER_OF_BRICKPIS * 4];        // Motor target position. This is implemented on the RPi, not in the BrickPi FW.
+  long          MotorTargetLastError   [NUMBER_OF_BRICKPIS * 4];        // Value used internally for motor position regulation.
+  float         MotorTargetKP          [NUMBER_OF_BRICKPIS * 4];        // Percent Konstant - used for motor position regulation.
+  float         MotorTargetKD          [NUMBER_OF_BRICKPIS * 4];        // Derivative Konstant - used for motor position regulation.
+  unsigned char MotorDead              [NUMBER_OF_BRICKPIS * 4];        // How wide of a gap to leave between 0 and the value speed value used for running to a target position.
 
 /*
   Encoders
 */
-  long          EncoderOffset          [4];        // Encoder offsets
-  long          Encoder                [4];        // Encoder values
+  long          EncoderOffset          [NUMBER_OF_BRICKPIS * 4];        // Encoder offsets
+  long          Encoder                [NUMBER_OF_BRICKPIS * 4];        // Encoder values
 
 /*
   Sensors
 */
-  long          Sensor                 [4];        // Primary sensor values
-  long          SensorArray            [4][4];     // For more sensor values for the sensor (e.g. for color sensor FULL mode).
-  unsigned char SensorType             [4];        // Sensor types
-  unsigned char SensorSettings         [4][8];     // Sensor settings, used for specifying I2C settings.
+  long          Sensor                 [NUMBER_OF_BRICKPIS * 4];        // Primary sensor values
+  long          SensorArray            [NUMBER_OF_BRICKPIS * 4][4];     // For more sensor values for the sensor (e.g. for color sensor FULL mode).
+  unsigned char SensorType             [NUMBER_OF_BRICKPIS * 4];        // Sensor types
+  unsigned char SensorSettings         [NUMBER_OF_BRICKPIS * 4][8];     // Sensor settings, used for specifying I2C settings.
 
 /*
   I2C
 */
-  unsigned char SensorI2CDevices       [4];        // How many I2C devices are on each bus (1 - 8).
-  unsigned char SensorI2CSpeed         [4];        // The I2C speed.
-  unsigned char SensorI2CAddr          [4][8];     // The I2C address of each device on each bus.  
-  unsigned char SensorI2CWrite         [4][8];     // How many bytes to write
-  unsigned char SensorI2CRead          [4][8];     // How many bytes to read
-  unsigned char SensorI2COut           [4][8][16]; // The I2C bytes to write
-  unsigned char SensorI2CIn            [4][8][16]; // The I2C input buffers
+  unsigned char SensorI2CDevices       [NUMBER_OF_BRICKPIS * 4];        // How many I2C devices are on each bus (1 - 8).
+  unsigned char SensorI2CSpeed         [NUMBER_OF_BRICKPIS * 4];        // The I2C speed.
+  unsigned char SensorI2CAddr          [NUMBER_OF_BRICKPIS * 4][8];     // The I2C address of each device on each bus.  
+  unsigned char SensorI2CWrite         [NUMBER_OF_BRICKPIS * 4][8];     // How many bytes to write
+  unsigned char SensorI2CRead          [NUMBER_OF_BRICKPIS * 4][8];     // How many bytes to read
+  unsigned char SensorI2COut           [NUMBER_OF_BRICKPIS * 4][8][16]; // The I2C bytes to write
+  unsigned char SensorI2CIn            [NUMBER_OF_BRICKPIS * 4][8][16]; // The I2C input buffers
 };
 
 struct BrickPiStruct BrickPi;
@@ -196,7 +202,7 @@ int BrickPiEmergencyStop(){
   unsigned char i = 0;
   while(i < 3){
     unsigned char ii = 0;
-    while(ii < 2){
+    while(ii < (NUMBER_OF_BRICKPIS * 2)){
       Array[BYTE_MSG_TYPE] = MSG_TYPE_E_STOP;
       BrickPiTx(BrickPi.Address[ii], 1, Array);
       if(BrickPiRx(&BytesReceived, Array, 5000)){
@@ -205,7 +211,7 @@ int BrickPiEmergencyStop(){
       if(!(BytesReceived == 1 && Array[BYTE_MSG_TYPE] == MSG_TYPE_E_STOP)){
         goto NEXT_TRY;
       }
-      if(ii == 1){
+      if(ii == ((NUMBER_OF_BRICKPIS * 2) - 1)){
         return 0;
       }
       ii++;
@@ -241,7 +247,7 @@ int BrickPiChangeAddress(unsigned char OldAddr, unsigned char NewAddr){
 // Change the BrickPi timeout
 int BrickPiSetTimeout(){
   unsigned char i = 0;
-  while(i < 2){
+  while(i < (NUMBER_OF_BRICKPIS * 2)){
     Array[BYTE_MSG_TYPE] = MSG_TYPE_TIMEOUT_SETTINGS;
     Array[ BYTE_TIMEOUT     ] = ( BrickPi.Timeout             & 0xFF);
     Array[(BYTE_TIMEOUT + 1)] = ((BrickPi.Timeout / 256     ) & 0xFF);
@@ -261,7 +267,7 @@ int BrickPiSetTimeout(){
 int BrickPiSetBaud(unsigned long baud_old, unsigned long baud_new){
   unsigned char result = 0;
   int i = 0;
-  while(i < 2){
+  while(i < (NUMBER_OF_BRICKPIS * 2)){
     Array[BYTE_MSG_TYPE] = MSG_TYPE_BAUD_SETTINGS;
     Array[ BYTE_TIMEOUT     ] = ( baud_new             & 0xFF);
     Array[(BYTE_TIMEOUT + 1)] = ((baud_new / 256     ) & 0xFF);
@@ -331,7 +337,7 @@ unsigned char BitsNeeded(unsigned long value){
 // Configure sensors
 int BrickPiSetupSensors(){
   unsigned char i = 0;
-  while(i < 2){
+  while(i < (NUMBER_OF_BRICKPIS * 2)){
     int ii = 0;
     while(ii < 256){
       Array[ii] = 0;
@@ -394,7 +400,7 @@ int BrickPiUpdateValues(){
   
   unsigned char i = 0;
   unsigned int ii = 0;
-  while(i < 2){
+  while(i < (NUMBER_OF_BRICKPIS * 2)){
     Retried = 0;    
     
     __RETRY_COMMUNICATION__:
@@ -596,6 +602,40 @@ int BrickPiUpdateValues(){
   return 0;
 }
 
+int I2C_file_descriptor = -1;
+
+int I2C_SetAddress(unsigned char addr){
+  if (ioctl(I2C_file_descriptor, I2C_SLAVE, addr) < 0)
+    return -1;
+  return 0;
+}
+
+int I2C_WriteArray(unsigned char addr, unsigned char ByteCount, unsigned char OutArray[]){
+  if (ioctl(I2C_file_descriptor, I2C_SLAVE, addr) < 0)
+    return -1;
+  if(write(I2C_file_descriptor, OutArray, ByteCount) != 1)  
+    return -2;
+  return 0;
+}
+
+int I2C_ReadArray(unsigned char addr, unsigned char ByteCount, unsigned char *InArray){
+  if (ioctl(I2C_file_descriptor, I2C_SLAVE, addr) < 0)
+    return -1;
+  if (read(I2C_file_descriptor, InArray, ByteCount) != 1)  
+    return -2;  
+  return 0;
+}
+
+int I2C_WriteReadArray(unsigned char addr, unsigned char OutByteCount, unsigned char OutArray[], unsigned char InByteCount, unsigned char *InArray){
+  if (ioctl(I2C_file_descriptor, I2C_SLAVE, addr) < 0)
+    return -1;
+  if(write(I2C_file_descriptor, OutArray, OutByteCount) != OutByteCount)  
+    return -2;
+  if (read(I2C_file_descriptor, InArray, InByteCount) != InByteCount)  
+    return -3;
+  return 0; 
+}
+
 int LED_1_value_file_descriptor = -1;
 int LED_2_value_file_descriptor = -1;
 
@@ -643,7 +683,10 @@ void BrickPiExitSafely(int sig)                  // Exit the program safely
   printf("\nReceived exit signal %d\n", sig);    // Tell the user why the program is exiting
 #endif
   BrickPiEmergencyStop();                        // Send E Stop to the BrickPi
-
+  
+  close(I2C_file_descriptor);
+  I2C_file_descriptor = -1;
+  
 #if COMPILE_HOST == HOST_RPI
   pwmWrite    (1, 0);                            // Set the PWM of LED 1 to 0
   digitalWrite(2, 0);                            // Set the state of LED 2 to 0
@@ -653,7 +696,9 @@ void BrickPiExitSafely(int sig)                  // Exit the program safely
   write(LED_1_value_file_descriptor, "0", 1);
   write(LED_2_value_file_descriptor, "0", 1);
   close(LED_1_value_file_descriptor);
-  close(LED_2_value_file_descriptor);  
+  close(LED_2_value_file_descriptor);
+  LED_1_value_file_descriptor = -1;
+  LED_2_value_file_descriptor = -1;
   if(SW_HOST == HOST_RPI){
     system("echo in > /sys/class/gpio/gpio18/direction");    // Set GPIO as INPUT    
     system("echo 18 > /sys/class/gpio/unexport");            // Unexport the GPIO
@@ -671,7 +716,6 @@ void BrickPiExitSafely(int sig)                  // Exit the program safely
     system("echo 51 > /sys/class/gpio/unexport");            // Unexport the GPIO
   }  
 #endif
-
   close(UART_file_descriptor);                   // Close the UART port
   UART_file_descriptor = -1;
   
@@ -806,28 +850,26 @@ int BrickPiForceBaud(unsigned long baud){
 }
 
 // GetRPiRev() // Figure out the RPi hardware revision
-#if ((COMPILE_HOST != HOST_RPI) && (COMPILE_HOST != HOST_BBB))
-  unsigned int GetRPiRev(){
-    FILE * filp;
-    unsigned rev;
-    char buf[512];
-    char term;
-    rev = 0;
-    filp = fopen ("/proc/cpuinfo", "r");
-    if (filp != NULL){
-      while (fgets(buf, sizeof(buf), filp) != NULL){
-        if (!strncasecmp("revision\t", buf, 9)){
-          if (sscanf(buf+strlen(buf)-5, "%x%c", &rev, &term) == 2){
-            if (term == '\n') break;
-            rev = 0;
-          }
+unsigned int GetRPiRev(){
+  FILE * filp;
+  unsigned rev;
+  char buf[512];
+  char term;
+  rev = 0;
+  filp = fopen ("/proc/cpuinfo", "r");
+  if (filp != NULL){
+    while (fgets(buf, sizeof(buf), filp) != NULL){
+      if (!strncasecmp("revision\t", buf, 9)){
+        if (sscanf(buf+strlen(buf)-5, "%x%c", &rev, &term) == 2){
+          if (term == '\n') break;
+          rev = 0;
         }
       }
-      fclose(filp);
     }
-    return ((rev>=4)?2:1);
+    fclose(filp);
   }
-#endif
+  return ((rev>=4)?2:1);
+}
 
 int StringFind(char *src, char *fnd){
   unsigned char i = 0;
@@ -892,12 +934,59 @@ int Enable_ttyO4(){
   return 1;
 }
 
-// Determine the SW host. If it's BBB, then also enable ttyO4 if necessary (every time it boots).
+int Enable_i2c_1(){
+//  system("echo BB-I2C1 > /sys/devices/bone_capemgr.*/slots");
+
+  char name[40];                 // Should only need 33 + NULL terminator = 34
+  strcpy(name, "/sys/devices");
+  // open /sys/devices
+  DIR *dirp;
+  dirp = opendir(name);
+  if(dirp == NULL){
+    return 0;
+  }
+  
+  // look for bone_capemgr.*
+  struct dirent *dp;
+  unsigned char done = 0;
+  while(!done){
+    dp = readdir(dirp);
+    if(dp == NULL){
+      closedir(dirp);
+      return 0;
+    }else{
+      if(StringFind(dp->d_name, "bone_capemgr.") == 0){    // sometimes it's "bone_capemgr.8" and sometimes it's "bone_capemgr.9"
+        closedir(dirp);
+        strcat(name, "/");                                 // append "/" to name
+        strcat(name, dp->d_name);                          // append dp->d_name to name
+        done = 1;
+      }
+    }
+  }
+  
+  strcat(name, "/slots"); // append "/slots" to name
+  
+  // open the file with the exact directory name  
+  int fd = open(name, O_RDWR);
+  if(fd == -1){   
+    return 0;
+  }
+  
+  // write "BB-I2C1"
+  #ifdef DEBUG
+    printf("BB-I2C1 > %s\n", name);
+  #endif  
+  write(fd, "BB-I2C1", 7);
+  close(fd);
+  return 1;
+}
+
+// Determine the SW host. If it's RPI, then also enable i2c if necessary (every time it boots). If it's BBB, then also enable ttyO4 and i2c-1 if necessary (every time it boots).
 int Get_SW_HOST(){
   // Determine SW_HOST
-/*  #if ((COMPILE_HOST == HOST_RPI) || (COMPILE_HOST == HOST_BBB))
+  #if ((COMPILE_HOST == HOST_RPI) || (COMPILE_HOST == HOST_BBB))
     SW_HOST = COMPILE_HOST;
-  #else*/
+  #else
     #ifdef DEBUG
       printf("Determining SW_HOST...\n");
     #endif
@@ -907,6 +996,21 @@ int Get_SW_HOST(){
       SW_HOST = HOST_RPI;
       #ifdef DEBUG
         printf("SW_HOST = RPI\n");
+      #endif
+      if(FileExists("/dev", "i2c-0") != 1 || FileExists("/dev", "i2c-1") != 1){
+        system("gpio load i2c 10");
+      }
+      #ifdef DEBUG
+        if(FileExists("/dev", "i2c-0") != 1 || FileExists("/dev", "i2c-1") != 1){
+          printf("Enable i2c: failure\n");
+          return -1;
+        }else{
+          printf("Enable i2c: success\n");
+        }
+      #else
+        if(FileExists("/dev", "i2c-0") != 1 || FileExists("/dev", "i2c-1") != 1){
+          return -1;
+        }
       #endif
     }else{
       if(FileExists("/dev", "ttyO4") == 1){
@@ -938,8 +1042,24 @@ int Get_SW_HOST(){
           return -1;
         }
       }
+      if(SW_HOST == HOST_BBB){
+        if(FileExists("/dev", "i2c-2") != 1){
+          #ifdef DEBUG
+            if(Enable_i2c_1() == 1){
+              printf("Enable i2c-1: success\n");
+            }else{
+              printf("Enable i2c-1: failure\n");          
+            }            
+          #else
+            Enable_i2c_1();
+          #endif
+          if(FileExists("/dev", "i2c-2") != 1){
+            return -1;
+          }
+        }
+      }
     }
-//  #endif
+  #endif
 
   // Print the SW_HOST
   #ifdef DEBUG  
@@ -979,7 +1099,6 @@ int BrickPiSetupLEDs(){
     
     // Setup the LED GPIOs specific to the host platform
     if(SW_HOST == HOST_RPI){
-      RPiRev = GetRPiRev();
       system("echo 18 > /sys/class/gpio/export");                   // Export the GPIO for use
       system("echo low > /sys/class/gpio/gpio18/direction");        // Enable the GPIO as OUTPUT and set LOW    
       LED_1_value_file_descriptor = open("/sys/class/gpio/gpio18/value", O_RDWR | O_CREAT);
@@ -1014,6 +1133,41 @@ int BrickPiSetupLEDs(){
       return -1;
     }
   #endif
+  return 0;
+}
+
+int BrickPiSetupI2C(unsigned long speed){
+
+  
+  // If I2C file is already open, close it
+  if(I2C_file_descriptor != -1){
+    close(I2C_file_descriptor);
+    I2C_file_descriptor = -1;
+  }  
+  
+  // Setup the HW I2C based on the SW_HOST
+  if(SW_HOST == HOST_RPI){
+    if(speed < 5000)
+      speed = 5000;
+    if(speed > 1000000)
+      speed = 1000000;
+    char str[80];
+    
+    sprintf(str, "sudo modprobe -r i2c_bcm2708 && sudo modprobe i2c_bcm2708 baudrate=%d", speed);
+    system(str);
+    
+    // Setup HW I2C specific to the RPi Revision
+    if(RPiRev == 1){
+      I2C_file_descriptor = open("/dev/i2c-0", O_RDWR);
+    }else{
+      I2C_file_descriptor = open("/dev/i2c-1", O_RDWR);
+    }
+  }else if(SW_HOST == HOST_BBB){
+    I2C_file_descriptor = open("/dev/i2c-2", O_RDWR);
+  }
+
+  if(I2C_file_descriptor == -1)
+    return -1;
   return 0;
 }
 
@@ -1073,44 +1227,47 @@ int BrickPiSetup(){
 
   // Determine the SW_HOST  
   if(Get_SW_HOST()){
-    return -1;
+    return -2;
+  }
+  
+  if(SW_HOST == HOST_RPI){
+    RPiRev = GetRPiRev();
   }
   
   // Setup the LED IOs  
   if(BrickPiSetupLEDs()){
-    return -1;
+    return -3;
+  }
+  
+  // Setup the HW I2C for sensor port 5
+  if(BrickPiSetupI2C(100000)){
+    return -4;
   }
   
   // Open the UART port  
   if(BrickPiOpenUART()){
-    return -1;
+    return -5;
   }
   
   // Set the BAUD rate to BAUD_IDEAL  
   if(BrickPiConfigBaud()){
-    return -1;
+    return -6;
   }
   
   // Set the BrickPi timeout
   if(BrickPiSetTimeout() == -1){
-    return -1;
+    return -7;
   }
   
-  // Setup the motor defaults  
-  BrickPi.MotorTargetKP[PORT_A] = MOTOR_KP_DEFAULT;             // Set to default
-  BrickPi.MotorTargetKP[PORT_B] = MOTOR_KP_DEFAULT;             //      ''
-  BrickPi.MotorTargetKP[PORT_C] = MOTOR_KP_DEFAULT;             //      ''
-  BrickPi.MotorTargetKP[PORT_D] = MOTOR_KP_DEFAULT;             //      ''
-  BrickPi.MotorTargetKD[PORT_A] = MOTOR_KD_DEFAULT;             //      ''
-  BrickPi.MotorTargetKD[PORT_B] = MOTOR_KD_DEFAULT;             //      ''
-  BrickPi.MotorTargetKD[PORT_C] = MOTOR_KD_DEFAULT;             //      ''
-  BrickPi.MotorTargetKD[PORT_D] = MOTOR_KD_DEFAULT;             //      ''
-  BrickPi.MotorDead[PORT_A] = MOTOR_DEAD_DEFAULT;               //      ''
-  BrickPi.MotorDead[PORT_B] = MOTOR_DEAD_DEFAULT;               //      ''
-  BrickPi.MotorDead[PORT_C] = MOTOR_DEAD_DEFAULT;               //      ''
-  BrickPi.MotorDead[PORT_D] = MOTOR_DEAD_DEFAULT;               //      ''
-  
-  return 0;                                                     // return 0
+  // Setup the motor defaults
+  int i = 0;
+  while(i < (NUMBER_OF_BRICKPIS * 4)){
+    BrickPi.MotorTargetKP[i] = MOTOR_KP_DEFAULT;           // Set to default
+    BrickPi.MotorTargetKD[i] = MOTOR_KD_DEFAULT;           //      ''
+    BrickPi.MotorDead    [i] = MOTOR_DEAD_DEFAULT;         //      ''
+    i++;
+  }
+  return 0;                                                // return 0
 }
 
 int BrickPiSetupAddress(unsigned char OldAddr, unsigned char NewAddr){
