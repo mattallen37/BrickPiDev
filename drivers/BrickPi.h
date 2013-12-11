@@ -3,7 +3,7 @@
 *  matthewrichardson37<at>gmail.com
 *  http://mattallen37.wordpress.com/
 *  Initial date: June 4, 2013
-*  Last updated: Dec  4, 2013
+*  Last updated: Dec  11, 2013
 *
 *  You may use this code as you wish, provided you give credit where it's due.
 *
@@ -604,14 +604,8 @@ int BrickPiUpdateValues(){
 
 int I2C_file_descriptor = -1;
 
-int I2C_SetAddress(unsigned char addr){
-  if (ioctl(I2C_file_descriptor, I2C_SLAVE, addr) < 0)
-    return -1;
-  return 0;
-}
-
 int I2C_WriteArray(unsigned char addr, unsigned char ByteCount, unsigned char OutArray[]){
-  if (ioctl(I2C_file_descriptor, I2C_SLAVE, addr) < 0)
+  if (ioctl(I2C_file_descriptor, I2C_SLAVE, (addr >> 1)) < 0)
     return -1;
   if(write(I2C_file_descriptor, OutArray, ByteCount) != 1)  
     return -2;
@@ -619,7 +613,7 @@ int I2C_WriteArray(unsigned char addr, unsigned char ByteCount, unsigned char Ou
 }
 
 int I2C_ReadArray(unsigned char addr, unsigned char ByteCount, unsigned char *InArray){
-  if (ioctl(I2C_file_descriptor, I2C_SLAVE, addr) < 0)
+  if (ioctl(I2C_file_descriptor, I2C_SLAVE, (addr >> 1)) < 0)
     return -1;
   if (read(I2C_file_descriptor, InArray, ByteCount) != 1)  
     return -2;  
@@ -627,7 +621,7 @@ int I2C_ReadArray(unsigned char addr, unsigned char ByteCount, unsigned char *In
 }
 
 int I2C_WriteReadArray(unsigned char addr, unsigned char OutByteCount, unsigned char OutArray[], unsigned char InByteCount, unsigned char *InArray){
-  if (ioctl(I2C_file_descriptor, I2C_SLAVE, addr) < 0)
+  if (ioctl(I2C_file_descriptor, I2C_SLAVE, (addr >> 1)) < 0)
     return -1;
   if(write(I2C_file_descriptor, OutArray, OutByteCount) != OutByteCount)  
     return -2;
